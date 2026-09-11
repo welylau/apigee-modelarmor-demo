@@ -1,0 +1,30 @@
+# Helper scripts (excluded from repository)
+restore.sh
+sanitize.sh
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# System & Editor files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Logs & temp files
+*.log
+*.zip
+.env

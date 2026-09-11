@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<SanitizeModelResponse async="false" continueOnError="false" enabled="true" name="SMR-modelresponse">
+    <DisplayName>SMR-modelresponse</DisplayName>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <ModelArmor>
+        <TemplateName>projects/YOUR_GCP_PROJECT_ID/locations/us/templates/ma-ai-gw-outbound</TemplateName>
+    </ModelArmor>
+    <UserPromptSource>{jsonPath('$.contents[-1].parts[-1].text',request.content,true)}</UserPromptSource>
+    <LLMResponseSource>{jsonPath('$.candidates[-1].content.parts[-1].text',response.content,true)}</LLMResponseSource>
+</SanitizeModelResponse>

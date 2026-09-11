@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Javascript continueOnError="false" enabled="true" timeLimit="200" name="JS-combine-resp">
+    <DisplayName>JS-combine-events</DisplayName>
+    <Properties/>
+    <Source>
+        var content = context.getVariable("response.event.current.content");
+        var eventText = "";
+        var finishReason = "";
+        if (content) {
+            var dataPrefixIdx = content.indexOf("data: ");
+            if (dataPrefixIdx !== -1) {
+                var jsonStr = content.substring(dataPrefixIdx + 6).trim();
+                try {
+                    var parsed = JSON.parse(jsonStr);
+                    if (parsed.candidates &amp;&amp; parsed.candidates.length &gt; 0) {
+                        var candidate = parsed.candidates[0];
+                        finishReason = candidate.finishReason || "";
+                        if (candidate.content &amp;&amp; candidate.content.parts &amp;&amp; candidate.content.parts.length &gt; 0) {
+                            for (var p = 0; p &lt; candidate.content.parts.length; p++) {
+                                if (candidate.content.parts[p].text) {
+                                    eventText += candidate.content.parts[p].text;
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {}
+            }
+        }
+
+        var previousBuf = context.getVariable("tmp_buffer_pre") || "";
+        var totalBuf = previousBuf + eventText;
+
+        if (totalBuf.length &gt; 0) {
+            context.setVariable("response_partial", totalBuf);
+            context.setVariable("buff_ready", "true");
+            context.setVariable("tmp_buffer_pre", totalBuf);
+        } else {
+            context.setVariable("buff_ready", "false");
+            context.setVariable("response_partial", "");
+            context.setVariable("tmp_buffer_pre", "");
+        }
+    </Source>
+</Javascript>

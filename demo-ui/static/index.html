@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apigee Model Armor Gateway Demo | Non-Streaming vs SSE</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto+Mono:wght@400;500&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-content">
+            <div class="header-badge">
+                <span class="badge-dot"></span> Apigee X API Gateway + Model Armor
+            </div>
+            <h1>Model Armor Proxy Evaluation Hub</h1>
+            <p class="subtitle">Comparing <span class="highlight">SMR-no-streaming</span> (Buffered JSON) vs <span class="highlight">SMR-streaming-sse</span> (Real-Time SSE) with Google Gemini backend</p>
+            
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Control Section -->
+        <section class="controls-card">
+            <div class="section-title">
+                <h2>1. Select Test Prompt or Enter Custom Input</h2>
+            </div>
+            
+            <div class="preset-buttons">
+                <button type="button" class="preset-btn warning" id="btnPresetJailbreak">
+                    <span class="btn-icon">🛡️</span>
+                    <span class="btn-title">Jailbreak / DAN Attempt</span>
+                    <span class="btn-desc">Tests Prompt Injection & Jailbreak filter</span>
+                </button>
+                <button type="button" class="preset-btn danger" id="btnPresetPartialHate">
+                    <span class="btn-icon">⚡</span>
+                    <span class="btn-title">Partial Hate Speech</span>
+                    <span class="btn-desc">Benign Paw Patrol text followed by hate speech mid-stream</span>
+                </button>
+                <button type="button" class="preset-btn danger" id="btnPresetHarassment">
+                    <span class="btn-icon">⚠️</span>
+                    <span class="btn-title">Harassment / Hate Speech</span>
+                    <span class="btn-desc">Immediate harmful speech test</span>
+                </button>
+                <button type="button" class="preset-btn danger" id="btnPresetChinese">
+                    <span class="btn-icon">🇨🇳</span>
+                    <span class="btn-title">Simplified Chinese</span>
+                    <span class="btn-desc">Forbidden City + Chinese toxicity</span>
+                </button>
+                <button type="button" class="preset-btn danger" id="btnPresetVietnamese">
+                    <span class="btn-icon">🇻🇳</span>
+                    <span class="btn-title">Vietnamese Language</span>
+                    <span class="btn-desc">Ha Long Bay + Vietnamese toxicity</span>
+                </button>
+                <button type="button" class="preset-btn danger" id="btnPresetMixed">
+                    <span class="btn-icon">🇹🇭🇯🇵</span>
+                    <span class="btn-title">Thai (Good) + Japanese (Bad)</span>
+                    <span class="btn-desc">Thai festival + Japanese hate speech</span>
+                </button>
+                <button type="button" class="preset-btn success" id="btnPresetMath">
+                    <span class="btn-icon">🟢</span>
+                    <span class="btn-title">Benign Math Query</span>
+                    <span class="btn-desc">Expects 200 OK across both proxies</span>
+                </button>
+                <button type="button" class="preset-btn info" id="btnPresetCreative">
+                    <span class="btn-icon">💡</span>
+                    <span class="btn-title">Benign Story Generation</span>
+                    <span class="btn-desc">Visualizes streaming vs buffered latency</span>
+                </button>
+            </div>
+
+            <div class="input-wrapper">
+                <label for="promptInput">Prompt payload (sent to model via Apigee proxy):</label>
+                <textarea id="promptInput" rows="3" placeholder="Enter prompt to send to both proxies..."></textarea>
+                <div class="input-footer">
+                    <span id="charCount">0 / 4096 characters</span>
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <button type="button" id="btnRunBoth" class="primary-btn">
+                    <span>⚡ Run Comparison (Simultaneous)</span>
+                </button>
+                <button type="button" id="btnRunNoStream" class="secondary-btn">
+                    <span>Run SMR-no-streaming Only</span>
+                </button>
+                <button type="button" id="btnRunStream" class="secondary-btn">
+                    <span>Run SMR-streaming-sse Only</span>
+                </button>
+                <button type="button" id="btnResetAll" class="refresh-btn" title="Reset all fields, clear outputs, metrics, and cancel any active requests">
+                    <span class="btn-icon">🔄</span>
+                    <span>Reset All Fields</span>
+                </button>
+                <button type="button" id="btnClear" class="outline-btn" title="Clear outputs only">
+                    <span>Clear Output</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Side by Side Evaluation Grid -->
+        <section class="grid-section">
+            <!-- Left Card: Non-Streaming -->
+            <div class="eval-card" id="cardNoStream">
+                <div class="card-header">
+                    <div class="proxy-identity">
+                        <span class="proxy-type-tag tag-json">REST / JSON Buffer</span>
+                        <h3>SMR-no-streaming</h3>
+                        <span class="endpoint-path">/smr-no-streaming</span>
+                    </div>
+                    <div class="status-indicator" id="statusNoStream">
+                        <span class="status-pill status-idle">IDLE</span>
+                    </div>
+                </div>
+
+                <div class="metrics-bar" id="metricsNoStream">
+                    <div class="metric-item">
+                        <span class="metric-label">TTFT:</span>
+                        <span class="metric-val" id="ttftNoStream">--</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Total Time:</span>
+                        <span class="metric-val" id="totalTimeNoStream">--</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">HTTP Code:</span>
+                        <span class="metric-val" id="httpCodeNoStream">--</span>
+                    </div>
+                </div>
+
+                <div class="security-banner" id="securityBannerNoStream">
+                    <span class="security-icon" id="securityIconNoStream">🔒</span>
+                    <div class="security-info">
+                        <strong id="securityTitleNoStream">Awaiting Request</strong>
+                        <p id="securityDescNoStream">Ready to evaluate model response buffer against Model Armor template.</p>
+                    </div>
+                </div>
+
+                <div class="output-container">
+                    <div class="output-header">
+                        <span>Response Output</span>
+                        <span class="token-leak-indicator" id="leakIndicatorNoStream">Leakage: None</span>
+                    </div>
+                    <div class="output-body" id="outputNoStream">
+                        <span class="placeholder-text">Click "Run Comparison" to initiate request...</span>
+                    </div>
+                </div>
+
+                <!-- Threat & Sanitization Audit Breakdown -->
+                <div class="audit-card" id="auditSectionNoStream">
+                    <div class="audit-header">
+                        <div class="audit-title-wrap">
+                            <span class="audit-title-icon">🛡️</span>
+                            <span class="audit-title">Content & Sanitization Audit</span>
+                        </div>
+                        <span class="audit-status-badge" id="auditBadgeNoStream">IDLE</span>
+                    </div>
+                    <div class="audit-grid">
+                        <div class="audit-panel bad-prompt-panel">
+                            <div class="panel-header">
+                                <span class="panel-icon">⚠️</span>
+                                <span class="panel-title">Flagged Bad Prompt Input:</span>
+                            </div>
+                            <div class="panel-content" id="auditBadPromptNoStream">
+                                <span class="placeholder-text">Awaiting execution...</span>
+                            </div>
+                        </div>
+                        <div class="audit-panel bad-response-panel">
+                            <div class="panel-header">
+                                <span class="panel-icon">🛡️</span>
+                                <span class="panel-title">Sanitized / Filter Finding:</span>
+                            </div>
+                            <div class="panel-content" id="auditBadResponseNoStream">
+                                <span class="placeholder-text">Awaiting execution...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <details class="debug-drawer">
+                    <summary>Raw Gateway Inspection Payload</summary>
+                    <pre class="debug-pre" id="debugNoStream">// Debug details will appear here</pre>
+                </details>
+            </div>
+
+            <!-- Right Card: Streaming SSE -->
+            <div class="eval-card" id="cardStream">
+                <div class="card-header">
+                    <div class="proxy-identity">
+                        <span class="proxy-type-tag tag-sse">Server-Sent Events (SSE)</span>
+                        <h3>SMR-streaming-sse</h3>
+                        <span class="endpoint-path">/smr-streaming-sse</span>
+                    </div>
+                    <div class="status-indicator" id="statusStream">
+                        <span class="status-pill status-idle">IDLE</span>
+                    </div>
+                </div>
+
+                <div class="metrics-bar" id="metricsStream">
+                    <div class="metric-item">
+                        <span class="metric-label">TTFT:</span>
+                        <span class="metric-val" id="ttftStream">--</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Total Time:</span>
+                        <span class="metric-val" id="totalTimeStream">--</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Events Count:</span>
+                        <span class="metric-val" id="eventsCountStream">0</span>
+                    </div>
+                </div>
+
+                <div class="security-banner" id="securityBannerStream">
+                    <span class="security-icon" id="securityIconStream">📡</span>
+                    <div class="security-info">
+                        <strong id="securityTitleStream">Awaiting EventStream</strong>
+                        <p id="securityDescStream">Ready to inspect streaming chunks in EventFlow in real-time.</p>
+                    </div>
+                </div>
+
+                <div class="output-container">
+                    <div class="output-header">
+                        <span>Live Stream Receiver</span>
+                        <span class="token-leak-indicator" id="leakIndicatorStream">Leakage: None</span>
+                    </div>
+                    <div class="output-body streaming-body" id="outputStream">
+                        <span class="placeholder-text">Click "Run Comparison" to initiate request...</span>
+                    </div>
+                </div>
+
+                <!-- Threat & Sanitization Audit Breakdown -->
+                <div class="audit-card" id="auditSectionStream">
+                    <div class="audit-header">
+                        <div class="audit-title-wrap">
+                            <span class="audit-title-icon">🛡️</span>
+                            <span class="audit-title">Content & Sanitization Audit</span>
+                        </div>
+                        <span class="audit-status-badge" id="auditBadgeStream">IDLE</span>
+                    </div>
+                    <div class="audit-grid">
+                        <div class="audit-panel bad-prompt-panel">
+                            <div class="panel-header">
+                                <span class="panel-icon">⚠️</span>
+                                <span class="panel-title">Flagged Bad Prompt Input:</span>
+                            </div>
+                            <div class="panel-content" id="auditBadPromptStream">
+                                <span class="placeholder-text">Awaiting execution...</span>
+                            </div>
+                        </div>
+                        <div class="audit-panel bad-response-panel">
+                            <div class="panel-header">
+                                <span class="panel-icon">🛡️</span>
+                                <span class="panel-title">Sanitized / Filter Finding:</span>
+                            </div>
+                            <div class="panel-content" id="auditBadResponseStream">
+                                <span class="placeholder-text">Awaiting execution...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <details class="debug-drawer">
+                    <summary>Real-Time SSE Event Log (data: chunks & faults)</summary>
+                    <div class="events-log-list" id="eventsLogListStream">
+                        <div class="event-log-entry">// Event logs will appear here</div>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- Technical Analysis Card -->
+        <section class="analysis-card">
+            <h2>Architectural Insight: Model Armor Streaming vs Non-Streaming Tradeoffs</h2>
+            <div class="analysis-grid">
+                <div class="analysis-box">
+                    <h3>🛑 Non-Streaming (Buffered)</h3>
+                    <ul>
+                        <li><strong>Mechanism:</strong> Apigee buffers the entire LLM response in memory before returning anything to the client.</li>
+                        <li><strong>Security Guarantee:</strong> <strong>Zero Token Leakage</strong>. If Model Armor triggers a policy violation, Apigee terminates with <code>HTTP 400 Bad Request</code>. The end user never sees any part of the offending response.</li>
+                        <li><strong>Tradeoff:</strong> Higher Time-to-First-Token (TTFT) and latency; not suitable for real-time chat UX.</li>
+                    </ul>
+                </div>
+                <div class="analysis-box">
+                    <h3>⚡ Streaming (SSE with EventFlow)</h3>
+                    <ul>
+                        <li><strong>Mechanism:</strong> Apigee opens a <code>text/event-stream</code> connection immediately. Chunks are evaluated in-flight within an <code>EventFlow</code>.</li>
+                        <li><strong>Security Behavior:</strong> When the safety violation threshold is crossed, Model Armor halts the stream and sends an SSE fault event.</li>
+                        <li><strong>Tradeoff:</strong> Low latency and superior user experience, but <strong>partial tokens can reach the client</strong> before the filter detects the violation and cuts the stream off.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>Google Cloud Apigee X &bull; Model Armor AI Gateway Integration Demo</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

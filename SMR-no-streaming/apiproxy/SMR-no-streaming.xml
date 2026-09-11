@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<APIProxy revision="2" name="SMR-no-streaming">
+    <Basepaths>/smr-no-streaming</Basepaths>
+    <ConfigurationVersion majorVersion="4" minorVersion="0"/>
+    <Description>Apigee Proxy with SanitizeModelResponse (non-streaming)</Description>
+    <DisplayName>SMR-no-streaming</DisplayName>
+    <Policies>
+        <Policy>AM-Prepare-Gemini-Request</Policy>
+        <Policy>SMR-modelresponse</Policy>
+    </Policies>
+    <ProxyEndpoints>
+        <ProxyEndpoint>default</ProxyEndpoint>
+    </ProxyEndpoints>
+    <TargetEndpoints>
+        <TargetEndpoint>default</TargetEndpoint>
+    </TargetEndpoints>
+</APIProxy>
