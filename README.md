@@ -36,47 +36,103 @@ As enterprises adopt Generative AI models into production applications, balancin
 ## 🏛️ High-Level Architecture
 
 ```mermaid
-flowchart TD
-    subgraph Client ["Client Layer"]
-        UI["Web Demo UI (Dual-Theme React/JS)"]
-    end
+flowchart TB
+    %% Visual Theme & Class Styling
+    classDef client fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#0f172a;
+    classDef apigee fill:#e8f0fe,stroke:#1a73e8,stroke-width:2px,color:#1a73e8;
+    classDef security fill:#ecfdf5,stroke:#059669,stroke-width:2px,color:#065f46;
+    classDef vertex fill:#fef2f2,stroke:#ea4335,stroke-width:2px,color:#991b1b;
+    classDef block fill:#fef2f2,stroke:#dc2626,stroke-width:2px,stroke-dasharray: 5 5,color:#b91c1c;
+    classDef neutral fill:#ffffff,stroke:#cbd5e1,stroke-width:1.5px,color:#334155;
 
-    subgraph Apigee ["Apigee X API Gateway (${PROJECT_ID})"]
+    subgraph ClientLayer [" 💻 Client & Presentation Layer "]
+        direction LR
+        UI["<b>Comparative Web UI</b><br/>(Light/Dark Theme • Resizable Panel • Presets)"]
+    end
+    class UI client;
+
+    subgraph ApigeeX [" 🌐 Apigee X API Management Platform "]
         direction TB
-        Flags["AM-Set-Guardrail-Flags<br/>(x-inbound / x-outbound)"]
-        SUP["SUP-userprompt<br/>(SanitizeUserPrompt: ma-ai-gw-inbound)"]
 
-        subgraph Proxies ["Comparative Proxies"]
-            ProxyNoStream["SMR-no-streaming (/smr-no-streaming)<br/>Target: generateContent"]
-            ProxyStream["SMR-streaming-sse (/smr-streaming-sse)<br/>Target: streamGenerateContent?alt=sse"]
+        subgraph IngressPreFlow ["Perimeter Ingress & Dynamic Routing"]
+            Flags["<b>AM-Set-Guardrail-Flags</b><br/>Extracts x-inbound & x-outbound headers"]
+            SUP["<b>Inbound Guardrail: SUP-userprompt</b><br/>SanitizeUserPrompt Policy"]
         end
+        class Flags,SUP apigee;
 
-        SMR["SMR-modelresponse<br/>(SanitizeModelResponse: ma-ai-gw-outbound)"]
-        EventFlow["EventFlow (text/event-stream)<br/>+ JS-combine-resp"]
+        subgraph Proxies ["Dual Comparative Proxy Pathways"]
+            direction LR
+
+            subgraph NonStreamPath ["1. Buffered REST Path"]
+                direction TB
+                ProxyNoStream["<b>SMR-no-streaming</b><br/><code>/smr-no-streaming</code>"]
+                Buffer["<b>Response Memory Buffer</b><br/>Holds full completion in memory"]
+                SMR_Buffered["<b>Outbound Guardrail: SMR-modelresponse</b><br/>Evaluates complete generated text"]
+                ZeroLeak["<b>Zero-Token Leakage Guarantee</b><br/>400 Bad Request drops payload completely"]
+            end
+            class ProxyNoStream,Buffer neutral;
+            class SMR_Buffered security;
+            class ZeroLeak block;
+
+            subgraph StreamPath ["2. Real-Time SSE Streaming Path"]
+                direction TB
+                ProxyStream["<b>SMR-streaming-sse</b><br/><code>/smr-streaming-sse</code>"]
+                EventFlow["<b>EventFlow Engine</b><br/><code>text/event-stream</code> chunk aggregation"]
+                SMR_Stream["<b>Outbound Guardrail: SMR-modelresponse</b><br/>In-flight chunk safety evaluation"]
+                Cutoff["<b>Real-Time Stream Cutoff</b><br/>Halts EventFlow immediately on violation"]
+            end
+            class ProxyStream,EventFlow neutral;
+            class SMR_Stream security;
+            class Cutoff block;
+        end
     end
 
-    subgraph GCP ["Google Cloud Backend"]
-        VertexAI["Vertex AI: Gemini 2.5 Flash Lite<br/>us-central1-aiplatform.googleapis.com"]
-        ModelArmor["Google Cloud Model Armor Engine<br/>(Prompt Injection, RAI, CSAM, SDP)"]
+    subgraph CloudBackend [" ☁️ Google Cloud AI & Security Services "]
+        direction LR
+
+        subgraph ModelArmorSvc ["Google Cloud Model Armor Engine"]
+            direction TB
+            TemplateInbound["<b>Inbound Template</b><br/><code>ma-ai-gw-inbound</code><br/>• Prompt Injection / DAN<br/>• Perimeter Toxicity / Hate<br/>• Sensitive Data (SDP)"]
+            TemplateOutbound["<b>Outbound Template</b><br/><code>ma-ai-gw-outbound</code><br/>• Egress Toxicity / Hate<br/>• Hallucinated PII Leaks<br/>• Harmful Output Sanitization"]
+        end
+        class TemplateInbound,TemplateOutbound security;
+
+        subgraph VertexAISvc ["Vertex AI Foundation Models"]
+            direction TB
+            Gemini["<b>Gemini 2.5 Flash Lite</b><br/><code>aiplatform.googleapis.com</code><br/>• generateContent (Buffered)<br/>• streamGenerateContent (SSE)"]
+        end
+        class Gemini vertex;
     end
 
-    UI -->|POST request with prompt| Flags
+    %% Client Interaction
+    UI ==>|1. Sends Prompt Payload + x-inbound/x-outbound| Flags
     Flags --> SUP
-    SUP <-->|Inspect Prompt| ModelArmor
 
-    SUP -->|If Allowed: Buffered| ProxyNoStream
-    SUP -->|If Allowed: Streaming| ProxyStream
+    %% Inbound Policy Evaluation
+    SUP <===>|Evaluates prompt before calling model| TemplateInbound
+    SUP -.->|Perimeter Violation Detected in ~750ms<br/>HTTP 400 FilterMatched (0 LLM Tokens)| UI
 
-    ProxyNoStream -->|generateContent| VertexAI
-    VertexAI -->|Full JSON| ProxyNoStream
-    ProxyNoStream -->|Inspect Response| SMR
-    SMR <-->|Evaluate| ModelArmor
-    SMR -->|Clean JSON / 400 Block| UI
+    %% Route to Proxies when Inbound Allowed
+    SUP ==>|Prompt Passed: Buffered Route| ProxyNoStream
+    SUP ==>|Prompt Passed: Streaming Route| ProxyStream
 
-    ProxyStream -->|streamGenerateContent?alt=sse| VertexAI
-    VertexAI -->|SSE Chunks| EventFlow
-    EventFlow -->|In-Flight Evaluation| SMR
-    EventFlow -->|Real-Time Tokens / Stream Cutoff| UI
+    %% Non-Streaming Execution Flow
+    ProxyNoStream ==>|Calls generateContent| Gemini
+    Gemini ==>|Returns Full Response Buffer| Buffer
+    Buffer --> SMR_Buffered
+    SMR_Buffered <===>|Scans full response text| TemplateOutbound
+    SMR_Buffered -->|Clean Output: 200 OK| UI
+    SMR_Buffered -.->|Violation Detected: 400 FilterMatched| ZeroLeak
+    ZeroLeak -.->|0 Tokens Delivered to Client| UI
+
+    %% Streaming Execution Flow
+    ProxyStream ==>|Calls streamGenerateContent?alt=sse| Gemini
+    Gemini -.->|Chunked SSE Token Stream| EventFlow
+    EventFlow --> SMR_Stream
+    SMR_Stream <===>|Verifies streaming chunks in-flight| TemplateOutbound
+    SMR_Stream -->|Clean Tokens: Real-Time Stream (~800ms TTFT)| UI
+    SMR_Stream -.->|Violation Detected Mid-Stream| Cutoff
+    Cutoff -.->|Stream Severed + SSE Fault Event| UI
 ```
 
 ---
@@ -153,8 +209,6 @@ The demo includes a modern, responsive web application designed with the **Googl
 
 ```
 ├── README.md                      # Project documentation and architectural guide
-├── sanitize.sh                    # Automated sanitization script for public GitHub sharing
-├── restore.sh                     # Automated restoration script for live environment testing
 ├── SMR-no-streaming/             # Apigee Proxy: Non-streaming buffered response
 │   └── apiproxy/
 │       ├── SMR-no-streaming.xml
@@ -228,12 +282,19 @@ Both proxies employ two centralized Model Armor templates in the target flow:
 
 ## 🚀 Getting Started & Deployment
 
-### 1. Prerequisites
-* Google Cloud Platform project with billing enabled.
-* Apigee X organization and environment provisioned.
-* Vertex AI API (`aiplatform.googleapis.com`) and Model Armor API enabled.
-* [apigeecli](https://github.com/apigee/apigeecli) installed and authenticated.
-* Python 3.10+ (for local UI testing).
+### 1. Required Google Cloud Solutions & Prerequisites
+
+To deploy and demonstrate this architecture, the following Google Cloud services, APIs, and permissions are required:
+
+| Google Cloud Service | Role in Architecture | Required APIs to Enable | Required IAM Roles / Permissions |
+| :--- | :--- | :--- | :--- |
+| **Google Cloud Apigee X** | Enterprise API Gateway hosting `SMR-no-streaming` and `SMR-streaming-sse`, managing perimeter routing, header flag mapping, OAuth token minting, and streaming `EventFlow`. | `apigee.googleapis.com` | `roles/apigee.admin` (for deployment)<br/>`roles/apigee.runtimeAgent` |
+| **Google Cloud Model Armor** | GenAI security guardrails engine executing real-time threat screening via templates: <br/>• `ma-ai-gw-inbound` (Location: `us`) for Prompt Injection, RAI, and Sensitive Data (SDP).<br/>• `ma-ai-gw-outbound` (Location: `us`) for LLM output toxicity and data leakage. | `modelarmor.googleapis.com` | `roles/modelarmor.user` or `roles/modelarmor.admin` (assigned to Apigee Runtime Service Account) |
+| **Vertex AI (Gemini 2.5 Flash Lite)** | Backend foundation model for high-speed, cost-effective inference via: <br/>• `generateContent` (Buffered JSON)<br/>• `streamGenerateContent?alt=sse` (Server-Sent Events) | `aiplatform.googleapis.com` | `roles/aiplatform.user` (assigned to Apigee Runtime Service Account) |
+| **Cloud IAM & Service Accounts** | Apigee native token minting (`<GoogleAccessToken>`) allowing the runtime to authenticate to Vertex AI and Model Armor without hardcoded keys. | `iam.googleapis.com` | Apigee Runtime SA (`sa-apigee-aiservices@...` or default compute SA) |
+| **Google Cloud Run (Optional / UI)** | Serverless container runtime hosting the comparative demonstration Web application (`demo-ui`), proxying SSE chunks, and forwarding policy headers. | `run.googleapis.com` | `roles/run.admin`<br/>`roles/run.invoker` |
+| **Artifact Registry & Cloud Build** | Builds the Docker container specification and stores images during Cloud Run source deployment. | `artifactregistry.googleapis.com`<br/>`cloudbuild.googleapis.com` | `roles/artifactregistry.writer`<br/>`roles/cloudbuild.builds.editor` |
+| **Developer Workstation Tools** | Local CLI utilities for building, testing, and proxy bundle deployment. | N/A | • `gcloud` CLI (v480.0.0+)<br/>• [`apigeecli`](https://github.com/apigee/apigeecli)<br/>• Python 3.10+ (for local UI testing) |
 
 ### 2. Deploy the Apigee Proxies
 Replace `${PROJECT_ID}` and `${ENV_NAME}` with your GCP environment values:
@@ -262,26 +323,6 @@ cd demo-ui
 # Deploy container directly to Cloud Run
 gcloud run deploy apigee-modelarmor-demo   --source .   --region asia-southeast1   --project ${PROJECT_ID}   --allow-unauthenticated
 ```
-
----
-
-## 🔒 Security Sanitization & Restoration Scripts
-
-To ensure sensitive project IDs, IP addresses, and live endpoints are never committed to public repositories, two automated scripts are provided:
-
-* **Sanitize before committing**:
-  ```bash
-  ./sanitize.sh
-  ```
-  Masks all project IDs and live nip.io hostnames with placeholders (`YOUR_GCP_PROJECT_ID`, `YOUR_APIGEE_HOST`) across all proxies and the Web UI. Also executes an automated security audit scan to verify zero leaks.
-
-* **Restore for live testing**:
-  ```bash
-  ./restore.sh
-  ```
-  Restores your live environment project IDs and nip.io hostnames instantly.
-
-*(Both scripts are tracked in `.gitignore` to prevent accidental commits).*
 
 ---
 
