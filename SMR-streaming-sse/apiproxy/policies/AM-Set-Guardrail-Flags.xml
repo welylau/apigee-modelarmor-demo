@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="false" enabled="true" name="AM-Set-Guardrail-Flags">
+    <DisplayName>Set Guardrail Flags</DisplayName>
+    <AssignVariable>
+        <Name>flow.enable_inbound</Name>
+        <Ref>request.header.x-inbound</Ref>
+        <Value>enable</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>flow.enable_outbound</Name>
+        <Ref>request.header.x-outbound</Ref>
+        <Value>enable</Value>
+    </AssignVariable>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</AssignMessage>

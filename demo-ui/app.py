@@ -9,6 +9,8 @@ Serves the demonstration UI and proxies requests to:
 import http.server
 import json
 import mimetypes
+mimetypes.add_type("image/svg+xml", ".svg")
+mimetypes.add_type("image/png", ".png")
 import os
 import ssl
 import sys
@@ -41,7 +43,7 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
             "script-src 'self'; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src https://fonts.gstatic.com; "
-            "connect-src 'self';"
+            "img-src 'self' data:; connect-src 'self';"
         )
 
     def do_HEAD(self):
@@ -49,17 +51,21 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         # Serve static assets
-        clean_path = self.path.split("?")[0]
-        if clean_path.endswith("/style.css"):
-            file_path = os.path.join(STATIC_DIR, "style.css")
-        elif clean_path.endswith("/app.js"):
-            file_path = os.path.join(STATIC_DIR, "app.js")
-        elif clean_path.endswith("/favicon.ico"):
+        clean_path = self.path.split("?")[0].lstrip("/")
+        if clean_path.endswith("favicon.ico"):
             self.send_response(204)
             self.end_headers()
             return
-        else:
+
+        if not clean_path or clean_path == "":
             file_path = os.path.join(STATIC_DIR, "index.html")
+        else:
+            # Prevent path traversal
+            target = os.path.normpath(os.path.join(STATIC_DIR, clean_path))
+            if target.startswith(STATIC_DIR) and os.path.isfile(target):
+                file_path = target
+            else:
+                file_path = os.path.join(STATIC_DIR, "index.html")
 
         if not os.path.exists(file_path):
             self.send_response(404)
@@ -102,6 +108,8 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
             raw_body = self.rfile.read(content_length).decode("utf-8")
             data = json.loads(raw_body)
             prompt = data.get("prompt", "").strip()
+            enable_inbound = bool(data.get("enable_inbound", True))
+            enable_outbound = bool(data.get("enable_outbound", True))
             if not prompt or len(prompt) > 4096:
                 self.send_response(400)
                 self._set_security_headers("application/json")
@@ -128,21 +136,26 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
         encoded_payload = json.dumps(payload).encode("utf-8")
 
         if clean_path.endswith("/api/no-streaming"):
-            self._handle_no_streaming(encoded_payload)
+            self._handle_no_streaming(encoded_payload, enable_inbound, enable_outbound)
         elif clean_path.endswith("/api/streaming-sse"):
-            self._handle_streaming_sse(encoded_payload)
+            self._handle_streaming_sse(encoded_payload, enable_inbound, enable_outbound)
         else:
             self.send_response(404)
             self._set_security_headers("application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"error": "Endpoint not found"}).encode("utf-8"))
 
-    def _handle_no_streaming(self, encoded_payload):
+    def _handle_no_streaming(self, encoded_payload, enable_inbound=True, enable_outbound=True):
         start_time = time.time()
+        headers = {
+            "Content-Type": "application/json",
+            "x-inbound": "enable" if enable_inbound else "disable",
+            "x-outbound": "enable" if enable_outbound else "disable",
+        }
         req = urllib.request.Request(
             NO_STREAMING_URL,
             data=encoded_payload,
-            headers={"Content-Type": "application/json"}
+            headers=headers
         )
 
         try:
@@ -188,12 +201,17 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
                 "error": {"message": str(e)}
             }).encode("utf-8"))
 
-    def _handle_streaming_sse(self, encoded_payload):
+    def _handle_streaming_sse(self, encoded_payload, enable_inbound=True, enable_outbound=True):
         start_time = time.time()
+        headers = {
+            "Content-Type": "application/json",
+            "x-inbound": "enable" if enable_inbound else "disable",
+            "x-outbound": "enable" if enable_outbound else "disable",
+        }
         req = urllib.request.Request(
             STREAMING_SSE_URL,
             data=encoded_payload,
-            headers={"Content-Type": "application/json"}
+            headers=headers
         )
 
         try:

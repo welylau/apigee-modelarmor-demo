@@ -3,6 +3,13 @@
     <PreFlow name="PreFlow">
         <Request>
             <Step>
+                <Name>AM-Set-Guardrail-Flags</Name>
+            </Step>
+            <Step>
+                <Condition>flow.enable_inbound != "disable"</Condition>
+                <Name>SUP-userprompt</Name>
+            </Step>
+            <Step>
                 <Name>AM-Prepare-Gemini-Request</Name>
             </Step>
         </Request>
@@ -12,6 +19,7 @@
         <Request/>
         <Response>
             <Step>
+                <Condition>flow.enable_outbound != "disable"</Condition>
                 <Name>SMR-modelresponse</Name>
             </Step>
         </Response>
