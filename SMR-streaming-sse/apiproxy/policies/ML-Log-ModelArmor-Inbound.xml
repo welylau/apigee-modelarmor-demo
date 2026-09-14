@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<MessageLogging continueOnError="true" enabled="true" name="ML-Log-ModelArmor-Inbound">
+    <DisplayName>Log ModelArmor Inbound Block</DisplayName>
+    <CloudLogging>
+        <LogName>projects/{organization.name}/logs/apigee-ai-sanitized-prompts</LogName>
+        <Message contentType="application/json">{
+  "proxy": "{apiproxy.name}",
+  "direction": "inbound",
+  "organization": "{organization.name}",
+  "environment": "{environment.name}",
+  "faultName": "{fault.name}",
+  "faultString": "{fault.faultstring}",
+  "clientIp": "{client.ip}",
+  "timestamp": "{system.timestamp}"
+}</Message>
+        <Labels>
+            <Label>
+                <Key>proxy</Key>
+                <Value>{apiproxy.name}</Value>
+            </Label>
+            <Label>
+                <Key>direction</Key>
+                <Value>inbound</Value>
+            </Label>
+        </Labels>
+        <ResourceType>api</ResourceType>
+    </CloudLogging>
+</MessageLogging>

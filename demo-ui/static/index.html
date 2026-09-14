@@ -77,6 +77,11 @@
                     <span>Gateway Active</span>
                 </div>
 
+                <button type="button" class="admin-nav-btn" id="btnScrollToAdmin" title="View Model Armor Admin Analytics & Logs">
+                    <span class="nav-btn-icon">📊</span>
+                    <span>Admin Panel</span>
+                </button>
+
                 <button type="button" class="theme-toggle-btn" id="themeToggleBtn" title="Toggle Light / Dark mode">
                     <svg id="themeIconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="5"></circle>
@@ -106,10 +111,9 @@
                 <div class="disclaimer-panel" id="disclaimerPanel">
                     <span class="disclaimer-icon">⚠️</span>
                     <div class="disclaimer-content">
-                        <strong>Demo Content Disclaimer</strong>
-                        <p>This demonstration contains simulated offensive or abusive words strictly for testing and demonstration purposes to evaluate Google Cloud Model Armor and Apigee guardrail detection.</p>
+                        <p><strong>Demo Notice:</strong> Contains simulated harmful prompts for testing guardrails.</p>
                     </div>
-                    <button type="button" class="disclaimer-close-btn" id="disclaimerCloseBtn" title="Dismiss disclaimer">&times;</button>
+                    <button type="button" class="disclaimer-close-btn" id="disclaimerCloseBtn" title="Dismiss">&times;</button>
                 </div>
                 
                 <!-- Section A: Model Armor Inspection Policies -->
@@ -117,11 +121,11 @@
                     <div class="section-header">
                         <div class="header-icon-title">
                             <span class="icon">🛡️</span>
-                            <h3>Model Armor Inspection Policies</h3>
+                            <h3>Inspection Policies</h3>
                         </div>
                     </div>
 
-                    <div class="guardrails-list">
+                    <div class="guardrails-list side-by-side">
                         <!-- Inbound Guardrail Toggle -->
                         <label class="guardrail-item" title="Inspect user prompts before forwarding to Vertex AI">
                             <div class="item-top">
@@ -131,8 +135,8 @@
                             </div>
                             <div class="guardrail-info">
                                 <strong>SanitizeUserPrompt</strong>
-                                <span class="template-name">Template: <code>ma-ai-gw-inbound</code></span>
-                                <p>Evaluates prompt injection, toxicity & SDP at perimeter. <em>Zero token cost on block.</em></p>
+                                <span class="template-name"><code>ma-ai-gw-inbound</code></span>
+                                <p>Prompt & injection</p>
                             </div>
                         </label>
 
@@ -145,8 +149,8 @@
                             </div>
                             <div class="guardrail-info">
                                 <strong>SanitizeModelResponse</strong>
-                                <span class="template-name">Template: <code>ma-ai-gw-outbound</code></span>
-                                <p>Sanitizes harmful model outputs, hallucinated PII & data leaks during generation.</p>
+                                <span class="template-name"><code>ma-ai-gw-outbound</code></span>
+                                <p>Harmful output & PII</p>
                             </div>
                         </label>
                     </div>
@@ -450,9 +454,180 @@
                     </div>
 
                 </div>
+
             </section>
 
         </main>
+    </div>
+
+    <!-- FLOATING RIGHT-EDGE DRAWER TRIGGER TAB -->
+    <button type="button" class="floating-admin-trigger" id="floatingAdminTrigger" title="Open Security Analytics & Audit Panel">
+        <span class="trigger-icon">📊</span>
+        <span class="trigger-text">Admin Panel</span>
+        <span class="trigger-badge">Audit</span>
+    </button>
+
+    <!-- RIGHT SLIDE-OUT POP-UP DRAWER BACKDROP -->
+    <div class="admin-drawer-backdrop" id="adminDrawerBackdrop"></div>
+
+    <!-- COLLAPSIBLE RIGHT POP-UP DRAWER: ADMIN ANALYTICS & AUDIT PANEL -->
+    <aside class="admin-drawer" id="adminDrawer" aria-label="Model Armor Security Analytics & Audit Panel">
+        <div class="admin-drawer-header">
+            <div class="admin-header-left">
+                <span class="admin-header-icon">📊</span>
+                <div class="admin-header-titles">
+                    <div class="admin-title-row">
+                        <h3>Model Armor Security & Audit Analytics</h3>
+                        <span class="admin-badge">Cloud Logging: <code>apigee-ai-sanitized-prompts</code></span>
+                    </div>
+                    <span class="admin-subtitle">Monitoring inspection volume, violation classifications & sanitized payloads for both proxies</span>
+                </div>
+            </div>
+            <div class="admin-header-right">
+                <button type="button" class="admin-drawer-close-btn" id="btnCloseAdminDrawer" title="Close Admin Panel (Esc)">&times;</button>
+            </div>
+        </div>
+
+        <div class="admin-drawer-content" id="adminDrawerContent">
+            <!-- Toolbar: Time filter & Refresh Data Button -->
+            <div class="admin-toolbar">
+                <div class="admin-filter-group">
+                    <span class="toolbar-label">⏱️ Time Range:</span>
+                    <div class="time-filter-buttons" id="timeFilterButtons">
+                        <button type="button" class="time-btn active" data-range="1h">Last 1 hour</button>
+                        <button type="button" class="time-btn" data-range="6h">Last 6 hours</button>
+                        <button type="button" class="time-btn" data-range="1d">Last 1 day</button>
+                        <button type="button" class="time-btn" data-range="3d">Last 3 days</button>
+                        <button type="button" class="time-btn" data-range="7d">Last 7 days</button>
+                    </div>
+                </div>
+
+                <div class="admin-toolbar-actions">
+                    <div class="proxy-select-wrap">
+                        <span class="toolbar-label">Proxy View:</span>
+                        <select id="adminProxySelect" class="admin-select">
+                            <option value="all">Both Proxies (Combined)</option>
+                            <option value="SMR-no-streaming">SMR-no-streaming</option>
+                            <option value="SMR-streaming-sse">SMR-streaming-sse</option>
+                        </select>
+                    </div>
+
+                    <button type="button" class="btn-refresh-data" id="btnRefreshData" title="Refresh data and pull latest events">
+                        <span class="refresh-icon" id="refreshIcon">🔄</span>
+                        <span id="refreshText">Refresh Data</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Top Stat Metric Chips -->
+            <div class="admin-stats-row">
+                <div class="admin-stat-chip">
+                    <span class="chip-label">Total Messages</span>
+                    <strong class="chip-value" id="statTotalMessages">0</strong>
+                </div>
+                <div class="admin-stat-chip chip-blocked">
+                    <span class="chip-label">Sanitized / Blocked</span>
+                    <strong class="chip-value" id="statTotalBlocked">0</strong>
+                </div>
+                <div class="admin-stat-chip chip-clean">
+                    <span class="chip-label">Clean / Allowed</span>
+                    <strong class="chip-value" id="statTotalClean">0</strong>
+                </div>
+                <div class="admin-stat-chip">
+                    <span class="chip-label">Interception Rate</span>
+                    <strong class="chip-value" id="statBlockRate">0%</strong>
+                </div>
+            </div>
+
+            <!-- Charts Section: Item 1 (Graph per Proxy) & Item 2 (Pie Chart) -->
+            <div class="admin-charts-grid">
+                <!-- Diagram / Graph: Total messages passing through each proxy -->
+                <div class="chart-box">
+                    <div class="chart-box-header">
+                        <div class="chart-title-wrap">
+                            <span class="chart-icon">📈</span>
+                            <h4>Total Messages Passing Through Each Proxy</h4>
+                        </div>
+                        <span class="chart-tag">Proxy Volume</span>
+                    </div>
+                    <div class="chart-container" id="proxyTrafficChart">
+                        <!-- Rendered dynamically via SVG -->
+                    </div>
+                </div>
+
+                <!-- Pie Chart: Type of sanitized or filtered violation -->
+                <div class="chart-box">
+                    <div class="chart-box-header">
+                        <div class="chart-title-wrap">
+                            <span class="chart-icon">🥧</span>
+                            <h4>Sanitized & Filtered Violations by Type</h4>
+                        </div>
+                        <span class="chart-tag">Threat Distribution</span>
+                    </div>
+                    <div class="chart-container" id="violationPieChart">
+                        <!-- Rendered dynamically via SVG -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Section: Item 3 (Detailed Log Table including payload) -->
+            <div class="admin-table-box">
+                <div class="table-box-header">
+                    <div class="table-title-group">
+                        <span class="table-icon">📋</span>
+                        <h4>Detailed Security Audit Logs & Payloads</h4>
+                        <span class="table-badge" id="tableCountBadge">0 records</span>
+                    </div>
+                    <div class="table-search-box">
+                        <input type="text" id="adminTableSearch" class="admin-search-input" placeholder="Search prompt, proxy, IP, violation...">
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp (UTC)</th>
+                                <th>Proxy</th>
+                                <th>Direction</th>
+                                <th>Verdict</th>
+                                <th>Violation Type</th>
+                                <th>Status</th>
+                                <th>Latency</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTableBody">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- PAYLOAD INSPECTION MODAL -->
+    <div class="modal-overlay" id="payloadModalOverlay" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <span class="modal-icon">🔎</span>
+                    <h3 id="modalTitle">Security Log Payload Inspector</h3>
+                </div>
+                <button type="button" class="modal-close-btn" id="modalCloseBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-meta-grid" id="modalMetaGrid">
+                    <!-- Meta cards -->
+                </div>
+                <div class="modal-section-title">Log Payload (JSON):</div>
+                <pre class="modal-payload-pre" id="modalPayloadPre"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-modal-copy" id="btnModalCopy">📋 Copy JSON</button>
+                <button type="button" class="btn-modal-close" id="btnModalCloseAction">Close</button>
+            </div>
+        </div>
     </div>
 
     <!-- Client Script -->

@@ -1,13 +1,15 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<APIProxy revision="6" name="SMR-streaming-sse">
-    <Basepaths>/smr-streaming-sse</Basepaths>
-    <ConfigurationVersion majorVersion="4" minorVersion="0"/>
-    <Description>Apigee Proxy with SanitizeModelResponse (SSE streaming)</Description>
+<APIProxy revision="8" name="SMR-streaming-sse">
     <DisplayName>SMR-streaming-sse</DisplayName>
+    <Description>Apigee Proxy with SanitizeModelResponse (SSE streaming)</Description>
+    <CreatedAt>1789180871571</CreatedAt>
+    <LastModifiedAt>1789180871571</LastModifiedAt>
+    <BasePaths>/smr-streaming-sse</BasePaths>
     <Policies>
         <Policy>AM-Prepare-Gemini-Request</Policy>
         <Policy>AM-Set-Guardrail-Flags</Policy>
         <Policy>JS-combine-resp</Policy>
+        <Policy>ML-Log-ModelArmor-Inbound</Policy>
+        <Policy>ML-Log-ModelArmor-Outbound</Policy>
         <Policy>SMR-modelresponse</Policy>
         <Policy>SUP-userprompt</Policy>
     </Policies>

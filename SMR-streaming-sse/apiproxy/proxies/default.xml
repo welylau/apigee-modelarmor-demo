@@ -8,6 +8,18 @@
         <Request/>
         <Response/>
     </PostFlow>
+    <PostClientFlow name="PostClientFlow">
+        <Response>
+            <Step>
+                <Condition>fault.name = "FilterMatched" and (SanitizeUserPrompt.SUP-userprompt.failed = true or sanitizeuserprompt.failed = true or (SanitizeModelResponse.SMR-modelresponse.failed != true and sanitizemodelresponse.failed != true))</Condition>
+                <Name>ML-Log-ModelArmor-Inbound</Name>
+            </Step>
+            <Step>
+                <Condition>fault.name = "FilterMatched" and (SanitizeModelResponse.SMR-modelresponse.failed = true or sanitizemodelresponse.failed = true)</Condition>
+                <Name>ML-Log-ModelArmor-Outbound</Name>
+            </Step>
+        </Response>
+    </PostClientFlow>
     <Flows/>
     <HTTPProxyConnection>
         <BasePath>/smr-streaming-sse</BasePath>

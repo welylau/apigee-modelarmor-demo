@@ -971,6 +971,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             activeAbortController = null;
             setButtonsDisabled(false);
+            setTimeout(() => {
+                if (window._refreshAdminData) window._refreshAdminData();
+            }, 600);
         }
     });
 
@@ -990,6 +993,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             activeAbortController = null;
             setButtonsDisabled(false);
+            setTimeout(() => {
+                if (window._refreshAdminData) window._refreshAdminData();
+            }, 600);
         }
     });
 
@@ -1009,6 +1015,643 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             activeAbortController = null;
             setButtonsDisabled(false);
+            setTimeout(() => {
+                if (window._refreshAdminData) window._refreshAdminData();
+            }, 600);
         }
     });
+
+    // =========================================================================
+    // ADMIN ANALYTICS & SECURITY AUDIT PANEL (MODEL ARMOR LOGGING)
+    // =========================================================================
+    function initAdminPanel() {
+        const adminDrawer = document.getElementById('adminDrawer');
+        const adminDrawerBackdrop = document.getElementById('adminDrawerBackdrop');
+        const btnCloseAdminDrawer = document.getElementById('btnCloseAdminDrawer');
+        const floatingAdminTrigger = document.getElementById('floatingAdminTrigger');
+        const btnScrollToAdmin = document.getElementById('btnScrollToAdmin');
+
+        const timeFilterButtons = document.querySelectorAll('.time-btn');
+        const adminProxySelect = document.getElementById('adminProxySelect');
+        const btnRefreshData = document.getElementById('btnRefreshData');
+        const refreshIcon = document.getElementById('refreshIcon');
+        const refreshText = document.getElementById('refreshText');
+
+        // Top Stats
+        const statTotalMessages = document.getElementById('statTotalMessages');
+        const statTotalBlocked = document.getElementById('statTotalBlocked');
+        const statTotalClean = document.getElementById('statTotalClean');
+        const statBlockRate = document.getElementById('statBlockRate');
+
+        // Charts
+        const proxyTrafficChart = document.getElementById('proxyTrafficChart');
+        const violationPieChart = document.getElementById('violationPieChart');
+
+        // Table
+        const adminTableBody = document.getElementById('adminTableBody');
+        const adminTableSearch = document.getElementById('adminTableSearch');
+        const tableCountBadge = document.getElementById('tableCountBadge');
+
+        // Modal
+        const payloadModalOverlay = document.getElementById('payloadModalOverlay');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+        const btnModalCloseAction = document.getElementById('btnModalCloseAction');
+        const btnModalCopy = document.getElementById('btnModalCopy');
+        const modalMetaGrid = document.getElementById('modalMetaGrid');
+        const modalPayloadPre = document.getElementById('modalPayloadPre');
+
+        let currentRange = '1h';
+        let currentProxy = 'all';
+        let cachedLogs = [];
+        let activePayloadData = null;
+
+        // Open & Close Drawer Logic
+        function openAdminDrawer() {
+            if (adminDrawer) adminDrawer.classList.add('open');
+            if (adminDrawerBackdrop) adminDrawerBackdrop.classList.add('active');
+            fetchAdminData(false);
+        }
+
+        function closeAdminDrawer() {
+            if (adminDrawer) adminDrawer.classList.remove('open');
+            if (adminDrawerBackdrop) adminDrawerBackdrop.classList.remove('active');
+        }
+
+        // Header button & Floating right tab triggers
+        if (btnScrollToAdmin) {
+            btnScrollToAdmin.addEventListener('click', openAdminDrawer);
+        }
+        if (floatingAdminTrigger) {
+            floatingAdminTrigger.addEventListener('click', openAdminDrawer);
+        }
+        if (btnCloseAdminDrawer) {
+            btnCloseAdminDrawer.addEventListener('click', closeAdminDrawer);
+        }
+        if (adminDrawerBackdrop) {
+            adminDrawerBackdrop.addEventListener('click', closeAdminDrawer);
+        }
+
+        // Time Range filter buttons (1h, 6h, 1d, 3d, 7d)
+        timeFilterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                timeFilterButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentRange = btn.getAttribute('data-range') || '1h';
+                fetchAdminData(true);
+            });
+        });
+
+        // Proxy view dropdown
+        if (adminProxySelect) {
+            adminProxySelect.addEventListener('change', (e) => {
+                currentProxy = e.target.value;
+                fetchAdminData(true);
+            });
+        }
+
+        // Refresh Data button
+        if (btnRefreshData) {
+            btnRefreshData.addEventListener('click', async () => {
+                btnRefreshData.classList.add('loading');
+                if (refreshText) refreshText.textContent = 'Refreshing...';
+                try {
+                    await fetch(`${API_BASE}api/admin/refresh`, { method: 'POST' }).catch(() => {});
+                    await fetchAdminData(false);
+                } finally {
+                    btnRefreshData.classList.remove('loading');
+                    if (refreshText) refreshText.textContent = 'Refresh Data';
+                }
+            });
+        }
+
+        // Table Search Filtering
+        if (adminTableSearch) {
+            adminTableSearch.addEventListener('input', () => {
+                filterAndRenderTable();
+            });
+        }
+
+        // Modal close handlers
+        function closeModal() {
+            if (payloadModalOverlay) payloadModalOverlay.style.display = 'none';
+        }
+        if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+        if (btnModalCloseAction) btnModalCloseAction.addEventListener('click', closeModal);
+        if (payloadModalOverlay) {
+            payloadModalOverlay.addEventListener('click', (e) => {
+                if (e.target === payloadModalOverlay) closeModal();
+            });
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (payloadModalOverlay && payloadModalOverlay.style.display !== 'none') {
+                    closeModal();
+                } else if (adminDrawer && adminDrawer.classList.contains('open')) {
+                    closeAdminDrawer();
+                }
+            }
+        });
+
+        // Copy JSON Button in modal
+        if (btnModalCopy) {
+            btnModalCopy.addEventListener('click', async () => {
+                if (!activePayloadData) return;
+                try {
+                    await navigator.clipboard.writeText(JSON.stringify(activePayloadData, null, 2));
+                    const orig = btnModalCopy.textContent;
+                    btnModalCopy.textContent = '✅ Copied!';
+                    setTimeout(() => { btnModalCopy.textContent = orig; }, 1800);
+                } catch (err) {
+                    console.error('Clipboard copy failed:', err);
+                }
+            });
+        }
+
+        // Fetch Admin Data from backend
+        async function fetchAdminData(showLoadingIndicator = false) {
+            if (showLoadingIndicator && btnRefreshData) {
+                btnRefreshData.classList.add('loading');
+            }
+            try {
+                const url = `${API_BASE}api/admin/logs?time_range=${encodeURIComponent(currentRange)}&proxy=${encodeURIComponent(currentProxy)}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                // Update Stats
+                const summary = data.summary || {};
+                if (statTotalMessages) statTotalMessages.textContent = summary.total_messages || 0;
+                if (statTotalBlocked) statTotalBlocked.textContent = summary.total_blocked || 0;
+                if (statTotalClean) statTotalClean.textContent = summary.total_clean || 0;
+                if (statBlockRate) {
+                    if (summary.block_rate !== undefined) {
+                        statBlockRate.textContent = summary.block_rate;
+                    } else {
+                        const rate = summary.block_rate_percent !== undefined ? summary.block_rate_percent : 0;
+                        statBlockRate.textContent = `${rate.toFixed(1)}%`;
+                    }
+                }
+
+                // Render Item 1: Total messages passing through each proxy
+                const byProxy = data.by_proxy || summary.by_proxy || {};
+                renderProxyTrafficChart(byProxy, summary.total_messages || 0);
+
+                // Render Item 2: Pie chart showing the type of sanitized or filtered violation
+                const violations = data.violations || summary.by_violation || {};
+                renderViolationPieChart(violations);
+
+                // Render Item 3: Table displaying details logs including payload
+                cachedLogs = data.logs || [];
+                filterAndRenderTable();
+
+            } catch (err) {
+                console.error('Failed to fetch admin data:', err);
+            } finally {
+                if (showLoadingIndicator && btnRefreshData) {
+                    btnRefreshData.classList.remove('loading');
+                }
+            }
+        }
+
+        // Expose helper to refresh admin data when playground runs finish
+        window._refreshAdminData = () => fetchAdminData(false);
+
+        // Chart 1: Diagram / Graph showing total message passing through each proxy
+        function renderProxyTrafficChart(byProxy, totalOverall) {
+            if (!proxyTrafficChart) return;
+            proxyTrafficChart.innerHTML = '';
+
+            const proxies = ['SMR-no-streaming', 'SMR-streaming-sse'];
+            const wrap = document.createElement('div');
+            wrap.className = 'chart-svg-wrap';
+
+            const barsList = document.createElement('div');
+            barsList.className = 'chart-bars-list';
+
+            proxies.forEach(proxyName => {
+                const data = byProxy[proxyName] || { total: 0, blocked: 0, clean: 0 };
+                const total = data.total || 0;
+                const blocked = data.blocked || 0;
+                const clean = data.clean || 0;
+
+                const item = document.createElement('div');
+                item.className = 'proxy-bar-item';
+
+                // Bar Header
+                const barHeader = document.createElement('div');
+                barHeader.className = 'proxy-bar-header';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'proxy-bar-name';
+                nameSpan.textContent = proxyName;
+
+                const countSpan = document.createElement('span');
+                countSpan.className = 'proxy-bar-count';
+                countSpan.textContent = `${total} msg (${blocked} blocked, ${clean} clean)`;
+
+                barHeader.appendChild(nameSpan);
+                barHeader.appendChild(countSpan);
+                item.appendChild(barHeader);
+
+                // Stacked Bar Track
+                const track = document.createElement('div');
+                track.className = 'stacked-bar-track';
+
+                if (total === 0) {
+                    const emptySpan = document.createElement('span');
+                    emptySpan.style.fontSize = '10px';
+                    emptySpan.style.color = 'var(--text-muted)';
+                    emptySpan.style.display = 'flex';
+                    emptySpan.style.alignItems = 'center';
+                    emptySpan.style.paddingLeft = '8px';
+                    emptySpan.textContent = '0 messages';
+                    track.appendChild(emptySpan);
+                } else {
+                    const blockedPct = (blocked / total) * 100;
+                    const cleanPct = (clean / total) * 100;
+
+                    if (blocked > 0) {
+                        const segBlocked = document.createElement('div');
+                        segBlocked.className = 'stacked-segment segment-blocked';
+                        segBlocked.style.width = `${blockedPct}%`;
+                        segBlocked.title = `${proxyName} - ${blocked} Blocked (${blockedPct.toFixed(0)}%)`;
+                        if (blockedPct > 12) {
+                            segBlocked.textContent = `${blocked}`;
+                        }
+                        track.appendChild(segBlocked);
+                    }
+
+                    if (clean > 0) {
+                        const segClean = document.createElement('div');
+                        segClean.className = 'stacked-segment segment-clean';
+                        segClean.style.width = `${cleanPct}%`;
+                        segClean.title = `${proxyName} - ${clean} Clean (${cleanPct.toFixed(0)}%)`;
+                        if (cleanPct > 12) {
+                            segClean.textContent = `${clean}`;
+                        }
+                        track.appendChild(segClean);
+                    }
+                }
+
+                item.appendChild(track);
+                barsList.appendChild(item);
+            });
+
+            wrap.appendChild(barsList);
+
+            // Bar Legend
+            const legend = document.createElement('div');
+            legend.className = 'bar-legend';
+            legend.innerHTML = `
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: var(--danger);"></span>
+                    <span>Sanitized / Blocked by Model Armor</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: var(--success);"></span>
+                    <span>Clean / Passed Through</span>
+                </div>
+            `;
+            wrap.appendChild(legend);
+
+            proxyTrafficChart.appendChild(wrap);
+        }
+
+        // Chart 2: SVG Pie / Donut Chart for Violations
+        function renderViolationPieChart(byViolation) {
+            if (!violationPieChart) return;
+            violationPieChart.innerHTML = '';
+
+            const entries = Object.entries(byViolation).filter(([k, v]) => v > 0);
+            const totalViolations = entries.reduce((acc, curr) => acc + curr[1], 0);
+
+            const palette = [
+                '#ef4444', // Red (Prompt Injection / Jailbreak)
+                '#f97316', // Orange (Harassment / Toxicity)
+                '#f59e0b', // Amber (Hate Speech)
+                '#8b5cf6', // Purple (Malicious Code)
+                '#3b82f6', // Blue (Sensitive / PII)
+                '#14b8a6', // Teal (Other)
+                '#ec4899'  // Pink
+            ];
+
+            if (totalViolations === 0) {
+                const empty = document.createElement('div');
+                empty.style.display = 'flex';
+                empty.style.flexDirection = 'column';
+                empty.style.alignItems = 'center';
+                empty.style.justifyContent = 'center';
+                empty.style.gap = '8px';
+                empty.style.color = 'var(--text-muted)';
+                empty.style.fontSize = '12px';
+                empty.style.height = '100%';
+                empty.innerHTML = `
+                    <span style="font-size: 28px;">🛡️</span>
+                    <span>No Model Armor violations detected in this window</span>
+                `;
+                violationPieChart.appendChild(empty);
+                return;
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'pie-chart-wrapper';
+
+            // SVG Pie/Donut
+            const svgContainer = document.createElement('div');
+            svgContainer.className = 'pie-svg-container';
+
+            const size = 160;
+            const center = size / 2;
+            const radius = 68;
+            const innerRadius = 38;
+
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+
+            let currentAngle = -Math.PI / 2; // Start from top 12 o'clock
+
+            entries.forEach(([label, val], idx) => {
+                const sliceAngle = (val / totalViolations) * (2 * Math.PI);
+                const startAngle = currentAngle;
+                const endAngle = currentAngle + sliceAngle;
+                currentAngle = endAngle;
+
+                const color = palette[idx % palette.length];
+
+                // Coordinates for outer arc
+                const x1 = center + radius * Math.cos(startAngle);
+                const y1 = center + radius * Math.sin(startAngle);
+                const x2 = center + radius * Math.cos(endAngle);
+                const y2 = center + radius * Math.sin(endAngle);
+
+                // Coordinates for inner arc
+                const ix1 = center + innerRadius * Math.cos(endAngle);
+                const iy1 = center + innerRadius * Math.sin(endAngle);
+                const ix2 = center + innerRadius * Math.cos(startAngle);
+                const iy2 = center + innerRadius * Math.sin(startAngle);
+
+                const largeArcFlag = sliceAngle > Math.PI ? 1 : 0;
+
+                // Create SVG path
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                let d = '';
+                if (entries.length === 1 || sliceAngle >= 2 * Math.PI - 0.001) {
+                    // Full donut ring
+                    d = `M ${center} ${center - radius} A ${radius} ${radius} 0 1 0 ${center} ${center + radius} A ${radius} ${radius} 0 1 0 ${center} ${center - radius} M ${center} ${center - innerRadius} A ${innerRadius} ${innerRadius} 0 1 1 ${center} ${center + innerRadius} A ${innerRadius} ${innerRadius} 0 1 1 ${center} ${center - innerRadius} Z`;
+                } else {
+                    d = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${ix2} ${iy2} Z`;
+                }
+
+                path.setAttribute('d', d);
+                path.setAttribute('fill', color);
+                path.setAttribute('stroke', 'var(--bg-secondary)');
+                path.setAttribute('stroke-width', '1.5');
+                path.style.cursor = 'pointer';
+                path.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+
+                const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+                const pct = ((val / totalViolations) * 100).toFixed(1);
+                title.textContent = `${label}: ${val} (${pct}%)`;
+                path.appendChild(title);
+
+                svg.appendChild(path);
+            });
+
+            // Center count text
+            const centerText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            centerText.setAttribute('x', center);
+            centerText.setAttribute('y', center + 4);
+            centerText.setAttribute('text-anchor', 'middle');
+            centerText.setAttribute('font-size', '14');
+            centerText.setAttribute('font-weight', '800');
+            centerText.setAttribute('fill', 'var(--text-main)');
+            centerText.textContent = totalViolations;
+            svg.appendChild(centerText);
+
+            const centerSub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            centerSub.setAttribute('x', center);
+            centerSub.setAttribute('y', center + 16);
+            centerSub.setAttribute('text-anchor', 'middle');
+            centerSub.setAttribute('font-size', '8');
+            centerSub.setAttribute('font-weight', '600');
+            centerSub.setAttribute('fill', 'var(--text-muted)');
+            centerSub.textContent = 'BLOCKED';
+            svg.appendChild(centerSub);
+
+            svgContainer.appendChild(svg);
+            wrapper.appendChild(svgContainer);
+
+            // Legend
+            const legendList = document.createElement('div');
+            legendList.className = 'pie-legend-list';
+
+            entries.forEach(([label, val], idx) => {
+                const color = palette[idx % palette.length];
+                const pct = ((val / totalViolations) * 100).toFixed(0);
+
+                const entry = document.createElement('div');
+                entry.className = 'pie-legend-entry';
+
+                const left = document.createElement('div');
+                left.className = 'legend-left';
+
+                const box = document.createElement('span');
+                box.className = 'legend-color-box';
+                box.style.background = color;
+
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'legend-label-text';
+                labelSpan.textContent = label;
+
+                left.appendChild(box);
+                left.appendChild(labelSpan);
+
+                const valSpan = document.createElement('span');
+                valSpan.className = 'legend-val-text';
+                valSpan.textContent = `${val} (${pct}%)`;
+
+                entry.appendChild(left);
+                entry.appendChild(valSpan);
+                legendList.appendChild(entry);
+            });
+
+            wrapper.appendChild(legendList);
+            violationPieChart.appendChild(wrapper);
+        }
+
+        // Table 3: Detailed Log Rows & Search Filtering
+        function filterAndRenderTable() {
+            if (!adminTableBody) return;
+            const query = (adminTableSearch ? adminTableSearch.value.trim().toLowerCase() : '');
+
+            const filtered = cachedLogs.filter(log => {
+                if (!query) return true;
+                const matchStr = `${log.timestamp || ''} ${log.proxy || ''} ${log.direction || ''} ${log.verdict || ''} ${log.violation_type || ''} ${log.client_ip || ''} ${log.status || ''} ${log.status_code || ''} ${log.prompt || ''}`.toLowerCase();
+                return matchStr.includes(query);
+            });
+
+            if (tableCountBadge) {
+                tableCountBadge.textContent = query
+                    ? `Showing ${filtered.length} of ${cachedLogs.length} records`
+                    : `${filtered.length} records`;
+            }
+
+            adminTableBody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 8;
+                td.style.textAlign = 'center';
+                td.style.padding = '24px';
+                td.style.color = 'var(--text-muted)';
+                td.textContent = cachedLogs.length === 0
+                    ? 'No log records recorded for this time range.'
+                    : 'No records matching search query.';
+                tr.appendChild(td);
+                adminTableBody.appendChild(tr);
+                return;
+            }
+
+            filtered.forEach(log => {
+                const tr = document.createElement('tr');
+
+                // 1. Timestamp
+                const tdTime = document.createElement('td');
+                tdTime.style.fontFamily = 'var(--font-mono)';
+                tdTime.style.fontSize = '11px';
+                tdTime.style.whiteSpace = 'nowrap';
+                tdTime.textContent = (log.timestamp || '').replace('T', ' ').substring(0, 19);
+                tr.appendChild(tdTime);
+
+                // 2. Proxy
+                const tdProxy = document.createElement('td');
+                tdProxy.style.fontWeight = '600';
+                tdProxy.style.whiteSpace = 'nowrap';
+                tdProxy.textContent = log.proxy || '-';
+                tr.appendChild(tdProxy);
+
+                // 3. Direction
+                const tdDir = document.createElement('td');
+                const dirPill = document.createElement('span');
+                dirPill.className = `table-pill ${log.direction === 'inbound' ? 'pill-inbound' : 'pill-outbound'}`;
+                dirPill.textContent = log.direction === 'inbound' ? '📥 Inbound' : '📤 Outbound';
+                tdDir.appendChild(dirPill);
+                tr.appendChild(tdDir);
+
+                // 4. Verdict
+                const tdVerdict = document.createElement('td');
+                const vPill = document.createElement('span');
+                const isBlocked = (log.verdict === 'BLOCKED' || log.blocked === true);
+                vPill.className = `table-pill ${isBlocked ? 'pill-blocked' : 'pill-clean'}`;
+                vPill.textContent = isBlocked ? '🛑 BLOCKED' : '✅ CLEAN';
+                tdVerdict.appendChild(vPill);
+                tr.appendChild(tdVerdict);
+
+                // 5. Violation Type
+                const tdViol = document.createElement('td');
+                tdViol.style.fontWeight = '500';
+                tdViol.textContent = log.violation_type || (isBlocked ? 'Model Armor Guardrail' : '—');
+                tr.appendChild(tdViol);
+
+                // 6. Status code
+                const tdStatus = document.createElement('td');
+                tdStatus.style.fontFamily = 'var(--font-mono)';
+                tdStatus.style.fontWeight = '700';
+                const statusCode = log.status_code || log.status || (isBlocked ? 400 : 200);
+                if (statusCode >= 400) {
+                    tdStatus.style.color = 'var(--danger)';
+                } else {
+                    tdStatus.style.color = 'var(--success)';
+                }
+                tdStatus.textContent = statusCode;
+                tr.appendChild(tdStatus);
+
+                // 7. Latency
+                const tdLatency = document.createElement('td');
+                tdLatency.style.fontFamily = 'var(--font-mono)';
+                const latencyVal = log.latency_ms !== undefined ? log.latency_ms : (log.elapsed_ms !== undefined ? log.elapsed_ms : null);
+                tdLatency.textContent = latencyVal !== null ? `${latencyVal}ms` : '—';
+                tr.appendChild(tdLatency);
+
+                // 8. Action button
+                const tdAction = document.createElement('td');
+                const btnInspect = document.createElement('button');
+                btnInspect.type = 'button';
+                btnInspect.className = 'btn-inspect-payload';
+                btnInspect.textContent = '🔎 View Payload';
+                btnInspect.addEventListener('click', () => {
+                    openPayloadModal(log);
+                });
+                tdAction.appendChild(btnInspect);
+                tr.appendChild(tdAction);
+
+                adminTableBody.appendChild(tr);
+            });
+        }
+
+        // Open Payload Inspection Modal
+        function openPayloadModal(log) {
+            activePayloadData = log.payload || log;
+            if (!payloadModalOverlay) return;
+
+            const isBlocked = (log.verdict === 'BLOCKED' || log.blocked === true);
+            const verdictStr = isBlocked ? 'BLOCKED' : 'CLEAN';
+            const statusCode = log.status_code || log.status || (isBlocked ? 400 : 200);
+
+            if (modalMetaGrid) {
+                modalMetaGrid.innerHTML = `
+                    <div class="modal-meta-item">
+                        <span class="modal-meta-k">Log ID</span>
+                        <span class="modal-meta-v">${escapeHtml(log.id || 'N/A')}</span>
+                    </div>
+                    <div class="modal-meta-item">
+                        <span class="modal-meta-k">Proxy</span>
+                        <span class="modal-meta-v">${escapeHtml(log.proxy || 'N/A')}</span>
+                    </div>
+                    <div class="modal-meta-item">
+                        <span class="modal-meta-k">Direction</span>
+                        <span class="modal-meta-v">${escapeHtml(log.direction || 'N/A')}</span>
+                    </div>
+                    <div class="modal-meta-item">
+                        <span class="modal-meta-k">Verdict</span>
+                        <span class="modal-meta-v" style="color: ${isBlocked ? 'var(--danger)' : 'var(--success)'};">${escapeHtml(verdictStr)}</span>
+                    </div>
+                    <div class="modal-meta-item">
+                        <span class="modal-meta-k">Violation</span>
+                        <span class="modal-meta-v">${escapeHtml(log.violation_type || 'None')}</span>
+                    </div>
+                    <div class="modal-meta-item">
+                        <span class="modal-meta-k">Status</span>
+                        <span class="modal-meta-v">${escapeHtml(String(statusCode))}</span>
+                    </div>
+                `;
+            }
+
+            if (modalPayloadPre) {
+                modalPayloadPre.textContent = JSON.stringify(log.payload || log, null, 2);
+            }
+
+            payloadModalOverlay.style.display = 'flex';
+        }
+
+        // Safe HTML escape helper
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Initial Data Fetch
+        fetchAdminData(false);
+    }
+
+    // Initialize Admin Panel
+    initAdminPanel();
 });

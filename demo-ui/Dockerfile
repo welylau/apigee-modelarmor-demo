@@ -7,6 +7,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 COPY app.py .
+COPY audit_logs.json* .
 COPY static/ ./static/
 
 EXPOSE 8080
