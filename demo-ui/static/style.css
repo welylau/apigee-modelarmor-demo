@@ -2152,6 +2152,11 @@ html, body {
   animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.modal-card.modal-card-wide {
+  max-width: 1240px;
+  width: 95vw;
+}
+
 @keyframes modalPop {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
@@ -2286,4 +2291,235 @@ html, body {
 .btn-modal-close:hover {
   background: var(--google-blue-hover);
 }
+
+/* Demo Architecture Card on Left Panel */
+.arch-card-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.arch-card-section:hover {
+  border-color: var(--border-accent);
+  box-shadow: var(--shadow-md);
+}
+
+.arch-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.arch-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.28);
+}
+
+.arch-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.arch-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.arch-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.arch-pill-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--google-blue);
+  background: var(--google-blue-subtle);
+  border: 1px solid rgba(26, 115, 232, 0.25);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+[data-theme="dark"] .arch-pill-tag {
+  background: rgba(26, 115, 232, 0.18);
+  border-color: rgba(26, 115, 232, 0.35);
+  color: #8ab4f8;
+}
+
+.arch-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.btn-view-arch {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--google-blue);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.25);
+  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-view-arch:hover {
+  background: var(--google-blue-hover);
+  box-shadow: 0 4px 10px rgba(26, 115, 232, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-view-arch:active {
+  transform: translateY(0);
+}
+
+/* Architecture Modal Pop-up (Image 2 style) */
+.arch-modal-card {
+  max-width: 1240px;
+  width: 95vw;
+  max-height: 92vh;
+  border-radius: var(--radius-lg);
+}
+
+.arch-modal-gcp-logo {
+  width: 22px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.arch-modal-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--google-blue);
+  background: var(--google-blue-subtle);
+  border: 1px solid rgba(26, 115, 232, 0.3);
+  padding: 2px 9px;
+  border-radius: 6px;
+  margin-left: 4px;
+}
+
+[data-theme="dark"] .arch-modal-badge {
+  background: rgba(26, 115, 232, 0.18);
+  border-color: rgba(26, 115, 232, 0.35);
+  color: #8ab4f8;
+}
+
+.arch-modal-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  background: var(--bg-tertiary);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.arch-diagram-wrapper {
+  background: #ffffff;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.arch-modal-img {
+  max-width: 100%;
+  max-height: 48vh;
+  width: auto;
+  height: auto;
+  border-radius: var(--radius-sm);
+  display: block;
+  object-fit: contain;
+}
+
+.arch-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 960px) {
+  .arch-steps-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.arch-step-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.arch-step-card:hover {
+  border-color: var(--border-accent);
+  transform: translateY(-1px);
+}
+
+.step-num {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: var(--google-blue);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+}
+
+.step-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.step-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.step-desc code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 10px;
+  background: var(--bg-tertiary);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: var(--text-main);
+}
+
 

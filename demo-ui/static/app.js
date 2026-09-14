@@ -1142,9 +1142,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (e.target === payloadModalOverlay) closeModal();
             });
         }
+
+        // Architecture Modal handlers
+        const btnOpenArchModal = document.getElementById('btnOpenArchModal');
+        const btnViewArchDiagram = document.getElementById('btnViewArchDiagram');
+        const archModalOverlay = document.getElementById('archModalOverlay');
+        const archModalCloseBtn = document.getElementById('archModalCloseBtn');
+        const btnArchModalCloseAction = document.getElementById('btnArchModalCloseAction');
+
+        function openArchModal() {
+            if (archModalOverlay) archModalOverlay.style.display = 'flex';
+        }
+        function closeArchModal() {
+            if (archModalOverlay) archModalOverlay.style.display = 'none';
+        }
+
+        if (btnOpenArchModal) btnOpenArchModal.addEventListener('click', openArchModal);
+        if (btnViewArchDiagram) btnViewArchDiagram.addEventListener('click', openArchModal);
+        if (archModalCloseBtn) archModalCloseBtn.addEventListener('click', closeArchModal);
+        if (btnArchModalCloseAction) btnArchModalCloseAction.addEventListener('click', closeArchModal);
+        if (archModalOverlay) {
+            archModalOverlay.addEventListener('click', (e) => {
+                if (e.target === archModalOverlay) closeArchModal();
+            });
+        }
+
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                if (payloadModalOverlay && payloadModalOverlay.style.display !== 'none') {
+                if (archModalOverlay && archModalOverlay.style.display !== 'none') {
+                    closeArchModal();
+                } else if (payloadModalOverlay && payloadModalOverlay.style.display !== 'none') {
                     closeModal();
                 } else if (adminDrawer && adminDrawer.classList.contains('open')) {
                     closeAdminDrawer();
