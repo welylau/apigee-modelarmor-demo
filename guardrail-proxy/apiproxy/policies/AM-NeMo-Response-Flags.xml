@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage async="false" continueOnError="true" enabled="true" name="AM-NeMo-Response-Flags">
+    <DisplayName>NeMo Guardrails - Response Flags</DisplayName>
+    <Set>
+        <Headers>
+            <Header name="x-nemo-verdict">{nemo.verdict}</Header>
+            <Header name="x-nemo-mode">{nemo.mode}</Header>
+            <Header name="x-nemo-profile">{nemo.profile}</Header>
+            <Header name="x-nemo-rail">{nemo.rail}</Header>
+            <Header name="x-nemo-rails">{nemo.rails}</Header>
+            <Header name="x-nemo-elapsed-ms">{nemo.elapsed_ms}</Header>
+        </Headers>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="response"/>
+</AssignMessage>

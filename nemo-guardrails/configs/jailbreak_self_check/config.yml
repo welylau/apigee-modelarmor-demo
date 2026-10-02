@@ -1,0 +1,15 @@
+models:
+  - type: main
+    engine: openai
+    model: gemini-2.5-flash-lite
+    parameters:
+      base_url: "http://127.0.0.1:8081/v1"
+      api_key: "vertex-adc"
+
+rails:
+  input:
+    flows:
+      - self check input
+  output:
+    flows:
+      - self check output

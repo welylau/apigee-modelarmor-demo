@@ -1,0 +1,68 @@
+models:
+  - type: main
+    engine: openai
+    model: gemini-2.5-flash-lite
+    parameters:
+      base_url: "http://127.0.0.1:8081/v1"
+      api_key: "vertex-adc"
+
+  - type: content_safety
+    engine: openai
+    model: gemini-2.5-flash-lite
+    parameters:
+      base_url: "http://127.0.0.1:8081/v1"
+      api_key: "vertex-adc"
+
+  - type: topic_control
+    engine: openai
+    model: gemini-2.5-flash-lite
+    parameters:
+      base_url: "http://127.0.0.1:8081/v1"
+      api_key: "vertex-adc"
+
+rails:
+  config:
+    context_bloat_detection:
+      max_chars: 4000
+      min_chars: 50
+      min_entropy: 3.0
+      max_repetition_ratio: 0.4
+      ngram_size: 3
+      max_run_ratio: 0.15
+      action: reject
+    injection_detection:
+      injections:
+        - code
+        - sqli
+        - template
+        - xss
+      action: reject
+    sensitive_data_detection:
+      input:
+        entities:
+          - PERSON
+          - EMAIL_ADDRESS
+          - PHONE_NUMBER
+          - CREDIT_CARD
+          - US_SSN
+          - IP_ADDRESS
+      output:
+        entities:
+          - EMAIL_ADDRESS
+          - PHONE_NUMBER
+          - CREDIT_CARD
+          - US_SSN
+          - IP_ADDRESS
+  input:
+    flows:
+      - context bloat detection on input
+      - mask sensitive data on input
+      - self check input
+      - content safety check input $model=content_safety
+      - topic safety check input $model=topic_control
+  output:
+    flows:
+      - injection detection
+      - mask sensitive data on output
+      - content safety check output $model=content_safety
+      - self check output

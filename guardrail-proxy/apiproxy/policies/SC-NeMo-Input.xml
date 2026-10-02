@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Calls the IAM-protected NeMo Guardrails Cloud Run service (rails-only input check).
+     Auth: Google ID token minted for the proxy's deploy SA (roles/run.invoker).
+     continueOnError=true + JS-NeMo-Evaluate => fail-open on timeout / errors. -->
+<ServiceCallout async="false" continueOnError="true" enabled="true" name="SC-NeMo-Input">
+    <DisplayName>NeMo Guardrails - Input Rails</DisplayName>
+    <Request clearPayload="true" variable="nemoRequest">
+        <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+        <Set>
+            <Headers>
+                <Header name="Content-Type">application/json</Header>
+            </Headers>
+            <Verb>POST</Verb>
+            <Payload contentType="application/json">{nemo.request.body}</Payload>
+        </Set>
+    </Request>
+    <Response>nemoResponse</Response>
+    <HTTPTargetConnection>
+        <Authentication>
+            <GoogleIDToken>
+                <Audience>https://YOUR_NEMO_GUARDRAILS_HOST</Audience>
+            </GoogleIDToken>
+        </Authentication>
+        <Properties>
+            <Property name="connect.timeout.millis">5000</Property>
+            <Property name="io.timeout.millis">25000</Property>
+        </Properties>
+        <URL>https://YOUR_NEMO_GUARDRAILS_HOST/v1/chat/completions</URL>
+    </HTTPTargetConnection>
+</ServiceCallout>

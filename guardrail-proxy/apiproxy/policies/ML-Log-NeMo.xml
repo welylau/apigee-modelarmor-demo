@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Logs NeMo verdict metadata only - never prompt or response text. -->
+<MessageLogging continueOnError="true" enabled="true" name="ML-Log-NeMo">
+    <DisplayName>Log NeMo Guardrails Verdict</DisplayName>
+    <CloudLogging>
+        <LogName>projects/{organization.name}/logs/apigee-ai-sanitized-prompts</LogName>
+        <Message contentType="application/json">{
+  "proxy": "{apiproxy.name}",
+  "engine": "nemo",
+  "direction": "inbound",
+  "organization": "{organization.name}",
+  "environment": "{environment.name}",
+  "developerApp": "{developer.app.name}",
+  "developerEmail": "{developer.email}",
+  "mode": "{nemo.mode}",
+  "profile": "{nemo.profile}",
+  "verdict": "{nemo.verdict}",
+  "action": "{nemo.action}",
+  "rail": "{nemo.rail}",
+  "rails": "{nemo.rails}",
+  "elapsedMs": "{nemo.elapsed_ms}",
+  "clientIp": "{client.ip}",
+  "timestamp": "{system.timestamp}"
+}</Message>
+        <Labels>
+            <Label>
+                <Key>proxy</Key>
+                <Value>{apiproxy.name}</Value>
+            </Label>
+            <Label>
+                <Key>engine</Key>
+                <Value>nemo</Value>
+            </Label>
+            <Label>
+                <Key>direction</Key>
+                <Value>inbound</Value>
+            </Label>
+            <Label>
+                <Key>developer_app</Key>
+                <Value>{developer.app.name}</Value>
+            </Label>
+        </Labels>
+        <ResourceType>api</ResourceType>
+    </CloudLogging>
+</MessageLogging>

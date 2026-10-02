@@ -1,0 +1,53 @@
+# ==============================================================================
+# StaticGuardrails property set (source file, UTF-8).
+# build.py converts this to resources/properties/sg.properties with non-ASCII
+# characters escaped as \uXXXX. Flow access: propertyset.sg.<key>
+#
+# Lists are comma-separated. Matching rules:
+#   - ASCII terms  : whole-word match on the "folded" prompt (lower-case, leetspeak
+#                    folded, repeated letters collapsed; terms are folded the same way).
+#   - Non-ASCII    : substring match on the normalized prompt (CJK / Thai have no
+#                    word boundaries - prefer multi-character phrases to avoid FPs,
+#                    e.g. use "去死吧" not "去死", which also matches "过去死亡").
+#
+# Word lists are a curated demo seed. For production, import and review a maintained
+# list (e.g. LDNOOBW multi-language list) and have native speakers validate TH/VI/JA/ZH.
+# ==============================================================================
+
+# ---- Mode & limits -----------------------------------------------------------
+mode.default=enforce
+# Outbound (model response) mode when header x-static-outbound is absent: enforce | redact | monitor | disable
+mode.outbound_default=enforce
+limit.max_prompt_chars=8192
+limit.max_turns=20
+limit.max_zero_width=5
+limit.max_control_chars=5
+escalation.min_flag_categories=2
+
+# ---- Harsh language: Tier 1 (severe: death wishes, threats) -> BLOCK -----------
+# EN threats/incitement are regex rule SG-LEX-T1-RE (build.py). Non-English phrases:
+lex.t1.en=
+lex.t1.zh=去死吧,你去死,杀了你,弄死你,死全家
+lex.t1.ja=死ね,死んでしまえ,殺してやる,消えろ
+lex.t1.th=ไปตายซะ,ฆ่าแก,ไปตายไป
+lex.t1.vi=chết đi,giết mày,biến đi chết đi
+
+# ---- Harsh language: Tier 2 (strong profanity) -> BLOCK -----------------------
+lex.t2.en=fuck,fucking,fucker,motherfucker,shit,bullshit,bitch,bastard,asshole,cunt,dickhead,wanker,twat,prick
+lex.t2.zh=傻逼,操你妈,他妈的,狗日的,王八蛋,滚你妈
+lex.t2.ja=クソ野郎,くたばれ,ぶっ殺す
+lex.t2.th=ไอ้เหี้ย,ควย,ไอ้สัส,ไอ้สัตว์,อีดอก
+lex.t2.vi=đụ má,địt mẹ,đéo,đồ chó,con đĩ
+
+# ---- Harsh language: Tier 3 (mild insults) -> LOG only -------------------------
+lex.t3.en=idiot,stupid,moron,dumb,loser,shut up,useless
+lex.t3.zh=蠢货,笨蛋,废物
+lex.t3.ja=バカ,アホ,役立たず
+lex.t3.th=โง่,ไร้ค่า
+lex.t3.vi=đồ ngu,đồ vô dụng
+
+# ---- Allow-list (removed before lexicon matching) ------------------------------
+lex.allow=scunthorpe,assessment,assassin,cockpit,shitake,shiitake,dickens,penistone,apigee,gemini,model armor,paw patrol
+
+# ---- Custom business deny-list: term|SEVERITY (BLOCK or FLAG) -------------------
+deny.terms=project titan|BLOCK,competitorx|FLAG

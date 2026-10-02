@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ProxyEndpoint name="default">
+    <PreFlow name="PreFlow">
+        <Request>
+            <Step>
+                <Condition>request.verb != "OPTIONS"</Condition>
+                <Name>AM-Resolve-APIKey</Name>
+            </Step>
+            <Step>
+                <Condition>request.verb != "OPTIONS"</Condition>
+                <Name>VAK-Verify-API-Key</Name>
+            </Step>
+            <Step>
+                <Condition>request.verb != "OPTIONS" and (request.header.x-static-guardrails != "disable" or request.header.x-static-outbound != "disable")</Condition>
+                <Name>FC-StaticGuardrails</Name>
+            </Step>
+            <Step>
+                <Condition>request.verb != "OPTIONS"</Condition>
+                <Name>AM-Set-Guardrail-Flags</Name>
+            </Step>
+            <Step>
+                <Condition>request.verb != "OPTIONS" and flow.enable_inbound != "disable"</Condition>
+                <Name>SUP-userprompt</Name>
+            </Step>
+            <Step>
+                <Condition>request.verb != "OPTIONS"</Condition>
+                <Name>JS-NeMo-Build-Request</Name>
+            </Step>
+            <Step>
+                <Condition>nemo.call = "true"</Condition>
+                <Name>SC-NeMo-Input</Name>
+            </Step>
+            <Step>
+                <Condition>nemo.call = "true"</Condition>
+                <Name>JS-NeMo-Evaluate</Name>
+            </Step>
+            <Step>
+                <Condition>nemo.action = "block"</Condition>
+                <Name>RF-NeMo-Blocked</Name>
+            </Step>
+        </Request>
+        <Response>
+            <Step>
+                <Condition>sg.enabled = "true"</Condition>
+                <Name>AM-SG-Response-Flags</Name>
+            </Step>
+            <Step>
+                <Condition>nemo.enabled = "true"</Condition>
+                <Name>AM-NeMo-Response-Flags</Name>
+            </Step>
+        </Response>
+    </PreFlow>
+    <PostFlow name="PostFlow">
+        <Request/>
+        <Response/>
+    </PostFlow>
+    <PostClientFlow name="PostClientFlow">
+        <Response>
+            <Step>
+                <Condition>sg.enabled = "true" and (sg.verdict = "block" or sg.verdict = "flag" or sg.out_verdict = "block" or sg.out_verdict = "flag" or sg.out_verdict = "redact")</Condition>
+                <Name>ML-Log-StaticGuardrails</Name>
+            </Step>
+            <Step>
+                <Condition>nemo.enabled = "true" and (nemo.verdict = "block" or nemo.verdict = "error")</Condition>
+                <Name>ML-Log-NeMo</Name>
+            </Step>
+            <Step>
+                <Condition>fault.name = "FilterMatched" and (SanitizeUserPrompt.SUP-userprompt.failed = true or sanitizeuserprompt.failed = true or (SanitizeModelResponse.SMR-modelresponse.failed != true and sanitizemodelresponse.failed != true))</Condition>
+                <Name>ML-Log-ModelArmor-Inbound</Name>
+            </Step>
+            <Step>
+                <Condition>fault.name = "FilterMatched" and (SanitizeModelResponse.SMR-modelresponse.failed = true or sanitizemodelresponse.failed = true)</Condition>
+                <Name>ML-Log-ModelArmor-Outbound</Name>
+            </Step>
+        </Response>
+    </PostClientFlow>
+    <Flows/>
+    <HTTPProxyConnection>
+        <BasePath>/guardrail-proxy</BasePath>
+    </HTTPProxyConnection>
+    <RouteRule name="default">
+        <TargetEndpoint>default</TargetEndpoint>
+    </RouteRule>
+</ProxyEndpoint>

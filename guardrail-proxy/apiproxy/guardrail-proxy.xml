@@ -1,0 +1,42 @@
+<APIProxy revision="1" name="guardrail-proxy">
+    <DisplayName>guardrail-proxy</DisplayName>
+    <Description>Apigee AI Gateway guardrail proxy (SSE streaming): Model Armor SUP/SMR + NVIDIA NeMo Guardrails</Description>
+    <CreatedAt>1789180871571</CreatedAt>
+    <LastModifiedAt>1789180871571</LastModifiedAt>
+    <BasePaths>/guardrail-proxy</BasePaths>
+    <Policies>
+        <Policy>AM-Prepare-Gemini-Request</Policy>
+        <Policy>AM-Resolve-APIKey</Policy>
+        <Policy>AM-NeMo-Response-Flags</Policy>
+        <Policy>AM-Set-Guardrail-Flags</Policy>
+        <Policy>AM-SG-Response-Flags</Policy>
+        <Policy>FC-StaticGuardrails</Policy>
+        <Policy>JS-combine-resp</Policy>
+        <Policy>JS-NeMo-Build-Request</Policy>
+        <Policy>JS-NeMo-Evaluate</Policy>
+        <Policy>JS-SG-Outbound-Scan</Policy>
+        <Policy>ML-Log-ModelArmor-Inbound</Policy>
+        <Policy>ML-Log-ModelArmor-Outbound</Policy>
+        <Policy>ML-Log-NeMo</Policy>
+        <Policy>ML-Log-StaticGuardrails</Policy>
+        <Policy>RF-NeMo-Blocked</Policy>
+        <Policy>RF-SG-Outbound-Blocked</Policy>
+        <Policy>SC-NeMo-Input</Policy>
+        <Policy>SMR-modelresponse</Policy>
+        <Policy>SUP-userprompt</Policy>
+        <Policy>VAK-Verify-API-Key</Policy>
+    </Policies>
+    <Resources>
+        <Resource>jsc://nemo-evaluate.js</Resource>
+        <Resource>jsc://nemo-input.js</Resource>
+        <Resource>jsc://sg-common.js</Resource>
+        <Resource>jsc://sg-outbound.js</Resource>
+        <Resource>jsc://sg-rules.js</Resource>
+    </Resources>
+    <ProxyEndpoints>
+        <ProxyEndpoint>default</ProxyEndpoint>
+    </ProxyEndpoints>
+    <TargetEndpoints>
+        <TargetEndpoint>default</TargetEndpoint>
+    </TargetEndpoints>
+</APIProxy>

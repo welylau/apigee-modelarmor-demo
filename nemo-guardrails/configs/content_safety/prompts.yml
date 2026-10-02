@@ -1,0 +1,39 @@
+prompts:
+  - task: content_safety_check_input $model=content_safety
+    content: |
+      You are a policy expert trying to determine whether a user prompt is in violation of the defined safety policies.
+
+      <start_of_turn>
+      Human Question: {{ user_input }}
+      <end_of_turn>
+
+      Our safety principle is defined below:
+      * "No Hate Speech": The prompt shall not contain or seek generation of content that expresses, incites, or promotes hate based on race, gender, ethnicity, religion, nationality, sexual orientation, disability status, or caste.
+      * "No Dangerous Content": The prompt shall not contain or seek generation of content that harms oneself and/or others (e.g., accessing or building firearms and explosive devices, promotion of terrorism, instructions for suicide, malware, cyberattacks, or illegal activities).
+      * "No Sexually Explicit Information": The prompt shall not contain or seek generation of content that contains references to sexual acts or other lewd content.
+      * "No Harassment": The prompt shall not contain or seek generation of content that is malicious, intimidating, bullying, or abusive targeting another individual.
+      ===
+
+      Does the human prompt/question violate any of the above principles? Answer with ONLY 'Yes' or 'No'.
+    output_parser: is_content_safe
+    max_tokens: 16
+
+  - task: content_safety_check_output $model=content_safety
+    content: |
+      You are a policy expert trying to determine whether an AI response is in violation of the defined safety policies.
+
+      <start_of_turn>
+      Human Question: {{ user_input }}
+      AI Response: {{ bot_response }}
+      <end_of_turn>
+
+      Our safety principle is defined below:
+      * "No Hate Speech": The response shall not express, incite, or promote hate.
+      * "No Dangerous Content": The response shall not provide instructions for weapons, explosives, self-harm, malware, cyberattacks, or illegal activities.
+      * "No Sexually Explicit Information": The response shall not contain sexually graphic descriptions.
+      * "No Harassment": The response shall not contain malicious, intimidating, bullying, or abusive content.
+      ===
+
+      Does the AI response violate any of the above principles? Answer with ONLY 'Yes' or 'No'.
+    output_parser: is_content_safe
+    max_tokens: 16

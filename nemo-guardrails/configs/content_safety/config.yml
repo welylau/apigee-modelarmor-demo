@@ -1,0 +1,22 @@
+models:
+  - type: main
+    engine: openai
+    model: gemini-2.5-flash-lite
+    parameters:
+      base_url: "http://127.0.0.1:8081/v1"
+      api_key: "vertex-adc"
+
+  - type: content_safety
+    engine: openai
+    model: gemini-2.5-flash-lite
+    parameters:
+      base_url: "http://127.0.0.1:8081/v1"
+      api_key: "vertex-adc"
+
+rails:
+  input:
+    flows:
+      - content safety check input $model=content_safety
+  output:
+    flows:
+      - content safety check output $model=content_safety

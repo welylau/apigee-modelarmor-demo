@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RaiseFault async="false" continueOnError="false" enabled="true" name="RF-NeMo-Blocked">
+    <DisplayName>NeMo Guardrails - Blocked</DisplayName>
+    <FaultResponse>
+        <Set>
+            <Headers>
+                <Header name="x-guardrail-engine">nemo</Header>
+                <Header name="x-nemo-verdict">{nemo.verdict}</Header>
+                <Header name="x-nemo-mode">{nemo.mode}</Header>
+                <Header name="x-nemo-profile">{nemo.profile}</Header>
+                <Header name="x-nemo-rail">{nemo.rail}</Header>
+                <Header name="x-nemo-elapsed-ms">{nemo.elapsed_ms}</Header>
+            </Headers>
+            <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"engine":"nemo-guardrails","code":400,"direction":"inbound","profile":"@nemo.profile#","rail":"@nemo.rail#","rails":"@nemo.rails#","elapsed_ms":"@nemo.elapsed_ms#","message":"@nemo.message#"}}</Payload>
+            <StatusCode>400</StatusCode>
+            <ReasonPhrase>Bad Request</ReasonPhrase>
+        </Set>
+    </FaultResponse>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</RaiseFault>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Logs rule IDs / categories only - never prompt or response text. -->
+<MessageLogging continueOnError="true" enabled="true" name="ML-Log-StaticGuardrails">
+    <DisplayName>Log Static Guardrails Verdict</DisplayName>
+    <CloudLogging>
+        <LogName>projects/{organization.name}/logs/apigee-ai-sanitized-prompts</LogName>
+        <Message contentType="application/json">{
+  "proxy": "{apiproxy.name}",
+  "engine": "static",
+  "organization": "{organization.name}",
+  "environment": "{environment.name}",
+  "developerApp": "{developer.app.name}",
+  "developerEmail": "{developer.email}",
+  "mode": "{sg.mode}",
+  "inVerdict": "{sg.verdict}",
+  "inAction": "{sg.action}",
+  "inRuleId": "{sg.rule_id}",
+  "inCategory": "{sg.category}",
+  "inRules": "{sg.rules}",
+  "inFlags": "{sg.flags}",
+  "parity": "{sg.parity}",
+  "elapsedMs": "{sg.elapsed_ms}",
+  "outVerdict": "{sg.out_verdict}",
+  "outAction": "{sg.out_action}",
+  "outRuleId": "{sg.out_rule_id}",
+  "outCategory": "{sg.out_category}",
+  "outRules": "{sg.out_rules}",
+  "outMode": "{sg.out_mode}",
+  "outRedactions": "{sg.out_redactions}",
+  "outRedactedRules": "{sg.out_redacted_rules}",
+  "clientIp": "{client.ip}",
+  "timestamp": "{system.timestamp}"
+}</Message>
+        <Labels>
+            <Label>
+                <Key>proxy</Key>
+                <Value>{apiproxy.name}</Value>
+            </Label>
+            <Label>
+                <Key>engine</Key>
+                <Value>static</Value>
+            </Label>
+            <Label>
+                <Key>developer_app</Key>
+                <Value>{developer.app.name}</Value>
+            </Label>
+        </Labels>
+        <ResourceType>api</ResourceType>
+    </CloudLogging>
+</MessageLogging>

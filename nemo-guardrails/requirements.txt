@@ -1,0 +1,4 @@
+nemoguardrails[server,jailbreak,sdd]==0.24.1
+spacy>=3.7.0,<3.8.0
+google-auth>=2.29.0
+requests>=2.32.0

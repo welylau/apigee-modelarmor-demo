@@ -1,0 +1,32 @@
+models:
+  - type: main
+    engine: openai
+    model: gemini-2.5-flash-lite
+    parameters:
+      base_url: "http://127.0.0.1:8081/v1"
+      api_key: "vertex-adc"
+
+rails:
+  config:
+    sensitive_data_detection:
+      input:
+        entities:
+          - PERSON
+          - EMAIL_ADDRESS
+          - PHONE_NUMBER
+          - CREDIT_CARD
+          - US_SSN
+          - IP_ADDRESS
+      output:
+        entities:
+          - EMAIL_ADDRESS
+          - PHONE_NUMBER
+          - CREDIT_CARD
+          - US_SSN
+          - IP_ADDRESS
+  input:
+    flows:
+      - mask sensitive data on input
+  output:
+    flows:
+      - mask sensitive data on output

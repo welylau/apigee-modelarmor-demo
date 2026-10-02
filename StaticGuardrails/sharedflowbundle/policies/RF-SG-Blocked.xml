@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RaiseFault async="false" continueOnError="false" enabled="true" name="RF-SG-Blocked">
+    <DisplayName>Static Guardrail - Blocked Response</DisplayName>
+    <FaultResponse>
+        <Set>
+            <Headers>
+                <Header name="x-guardrail-engine">static</Header>
+                <Header name="x-sg-rule">{sg.rule_id}</Header>
+                <Header name="x-sg-elapsed-ms">{sg.elapsed_ms}</Header>
+            </Headers>
+            <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"engine":"static-guardrails","code":400,"direction":"inbound","rule_id":"@sg.rule_id#","category":"@sg.category#","severity":"@sg.severity#","rules":"@sg.rules#","message":"@sg.message#","elapsed_ms":"@sg.elapsed_ms#"}}</Payload>
+            <StatusCode>400</StatusCode>
+            <ReasonPhrase>Bad Request</ReasonPhrase>
+        </Set>
+    </FaultResponse>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</RaiseFault>

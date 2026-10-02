@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<JSONThreatProtection async="false" continueOnError="true" enabled="true" name="JTP-SG-Structure">
+    <DisplayName>Static Guardrail - JSON Structure Limits</DisplayName>
+    <ArrayElementCount>50</ArrayElementCount>
+    <ContainerDepth>10</ContainerDepth>
+    <ObjectEntryCount>50</ObjectEntryCount>
+    <ObjectEntryNameLength>100</ObjectEntryNameLength>
+    <Source>request</Source>
+    <StringValueLength>8192</StringValueLength>
+</JSONThreatProtection>

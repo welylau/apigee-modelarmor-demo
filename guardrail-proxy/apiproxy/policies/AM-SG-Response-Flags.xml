@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage async="false" continueOnError="true" enabled="true" name="AM-SG-Response-Flags">
+    <DisplayName>Static Guardrail - Response Flags</DisplayName>
+    <Set>
+        <Headers>
+            <Header name="x-sg-verdict">{sg.verdict}</Header>
+            <Header name="x-sg-mode">{sg.mode}</Header>
+            <Header name="x-sg-out-mode">{sg.out_mode}</Header>
+            <Header name="x-sg-rules">{sg.rules}</Header>
+            <Header name="x-sg-flags">{sg.flags}</Header>
+            <Header name="x-sg-elapsed-ms">{sg.elapsed_ms}</Header>
+        </Headers>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="response"/>
+</AssignMessage>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Fail-open on script error: the outbound static scan is a best-effort layer in front of SMR. -->
+<Javascript async="false" continueOnError="true" enabled="true" timeLimit="200" name="JS-SG-Outbound-Scan">
+    <DisplayName>Static Guardrail - Outbound Scan</DisplayName>
+    <IncludeURL>jsc://sg-rules.js</IncludeURL>
+    <IncludeURL>jsc://sg-common.js</IncludeURL>
+    <ResourceURL>jsc://sg-outbound.js</ResourceURL>
+</Javascript>

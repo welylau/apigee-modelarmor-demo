@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Fail-closed: a script error faults the request rather than silently skipping the guardrail. -->
+<Javascript async="false" continueOnError="false" enabled="true" timeLimit="200" name="JS-SG-Decide">
+    <DisplayName>Static Guardrail - Decide Verdict</DisplayName>
+    <IncludeURL>jsc://sg-rules.js</IncludeURL>
+    <IncludeURL>jsc://sg-common.js</IncludeURL>
+    <ResourceURL>jsc://sg-decide.js</ResourceURL>
+</Javascript>

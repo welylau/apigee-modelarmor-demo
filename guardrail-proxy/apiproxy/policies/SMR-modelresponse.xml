@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<SanitizeModelResponse async="false" continueOnError="false" enabled="true" name="SMR-modelresponse">
+    <DisplayName>SMR-modelresponse</DisplayName>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <ModelArmor>
+        <TemplateName>projects/YOUR_GCP_PROJECT_ID/locations/us/templates/ma-ai-gw-outbound</TemplateName>
+    </ModelArmor>
+    <LLMResponseSource>{response_partial}</LLMResponseSource>
+</SanitizeModelResponse>

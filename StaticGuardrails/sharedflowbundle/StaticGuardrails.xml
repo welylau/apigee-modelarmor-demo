@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<SharedFlowBundle revision="1" name="StaticGuardrails">
+    <DisplayName>StaticGuardrails</DisplayName>
+    <Description>Layer-0 deterministic AI guardrails: JSONThreatProtection + RegularExpressionProtection + JavaScript (prompt injection, code/SQL injection, secrets, harsh language, PII, structural abuse). Invoked via FlowCallout; controlled by header x-static-guardrails (enforce|monitor|disable).</Description>
+    <Policies>
+        <Policy>JTP-SG-Structure</Policy>
+        <Policy>JS-SG-Extract-Normalize</Policy>
+        <Policy>RE-SG-PromptInjection</Policy>
+        <Policy>RE-SG-CodeInjection</Policy>
+        <Policy>RE-SG-Secrets</Policy>
+        <Policy>JS-SG-Lexicon-Validators</Policy>
+        <Policy>JS-SG-Decide</Policy>
+        <Policy>RF-SG-Blocked</Policy>
+    </Policies>
+    <Resources>
+        <Resource>jsc://sg-common.js</Resource>
+        <Resource>jsc://sg-rules.js</Resource>
+        <Resource>jsc://sg-extract-normalize.js</Resource>
+        <Resource>jsc://sg-lexicon-validators.js</Resource>
+        <Resource>jsc://sg-decide.js</Resource>
+    </Resources>
+    <SharedFlows>
+        <SharedFlow>default</SharedFlow>
+    </SharedFlows>
+</SharedFlowBundle>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<SharedFlow name="default">
+    <!-- 1. Structural limits on the JSON body (continueOnError; result read by JS) -->
+    <Step>
+        <Name>JTP-SG-Structure</Name>
+    </Step>
+    <!-- 2. Extract Gemini prompt text, normalize, publish sg.prompt_* -->
+    <Step>
+        <Name>JS-SG-Extract-Normalize</Name>
+    </Step>
+    <!-- 3. Declarative regex signatures on normalized/raw prompt (continueOnError; .failed read by JS) -->
+    <Step>
+        <Name>RE-SG-PromptInjection</Name>
+    </Step>
+    <Step>
+        <Name>RE-SG-CodeInjection</Name>
+    </Step>
+    <Step>
+        <Name>RE-SG-Secrets</Name>
+    </Step>
+    <!-- 4. Lexicon, deny-list, checksum PII, structural + JS-only rules -->
+    <Step>
+        <Name>JS-SG-Lexicon-Validators</Name>
+    </Step>
+    <!-- 5. Verdict + rule attribution + mode -->
+    <Step>
+        <Name>JS-SG-Decide</Name>
+    </Step>
+    <!-- 6. Sanitized 400 (never echoes the matched text) -->
+    <Step>
+        <Name>RF-SG-Blocked</Name>
+        <Condition>sg.action = "block"</Condition>
+    </Step>
+</SharedFlow>
