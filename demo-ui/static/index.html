@@ -6,7 +6,7 @@
     <title>Apigee X — Model Armor & AI Gateway Governance</title>
     
     <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+    <link rel="icon" href="https://www.gstatic.com/bricks/image/b45728f17bf88494b25d78a9fb27ae538e6eb4a06a972f6502b7410ff714532d.svg" type="image/svg+xml">
     
     <!-- Fonts: Plus Jakarta Sans & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,6 +15,7 @@
     
     <!-- Stylesheet -->
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="tour/tour.css">
 </head>
 <body>
     <div class="app-container">
@@ -51,27 +52,25 @@
 
                 <div class="brand-title-area">
                     <div class="brand-title">
-                        <span>Model Armor & AI Gateway</span>
-                        <span class="brand-badge">Vertex AI</span>
+                        <span>Apigee and Guardrails Solutions</span>
                     </div>
-                    <span class="brand-subtitle">Gemini 2.5 Flash Lite • Inbound & Outbound Defense-in-Depth</span>
-                </div>
-            </div>
-
-            <!-- Architecture Badges & Environment -->
-            <div class="arch-tags">
-                <div class="arch-pill" title="Inbound Guardrail Policy">
-                    <span class="pill-dot blue"></span>
-                    <span>SUP: <strong>ma-ai-gw-inbound</strong></span>
-                </div>
-                <div class="arch-pill" title="Outbound Guardrail Policy">
-                    <span class="pill-dot green"></span>
-                    <span>SMR: <strong>ma-ai-gw-outbound</strong></span>
+                    <span class="brand-subtitle">Gemini 3.5 Flash Lite • Inbound & Outbound Defense-in-Depth</span>
                 </div>
             </div>
 
             <!-- Header Actions & Theme Toggle -->
             <div class="header-actions">
+                <button type="button" class="header-tour-btn" id="headerTourBtn" title="Open the interactive Guided Tour">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                        <line x1="8" y1="2" x2="8" y2="18"></line>
+                        <line x1="16" y1="6" x2="16" y2="22"></line>
+                    </svg>
+                    <span>Guided Tour</span>
+                </button>
+
+                <button type="button" class="demo-notice-btn" id="btnDemoNotice" aria-controls="disclaimerPanel" title="Demo Notice: contains simulated harmful prompts for testing guardrails">⚠</button>
+
                 <div class="status-badge" title="Apigee Gateway Ingress Status">
                     <span class="status-dot"></span>
                     <span>Gateway Active</span>
@@ -112,195 +111,157 @@
             <!-- LEFT PANEL: Controls, Policies & Presets (Resizable) -->
             <aside class="left-panel" id="leftPanel">
 
-                <!-- Content & Demonstration Disclaimer Panel -->
-                <div class="disclaimer-panel" id="disclaimerPanel">
+                <!-- Demo notice (dismissal remembered; re-open via the ⚠ button in the header) -->
+                <div class="disclaimer-panel" id="disclaimerPanel" hidden>
                     <span class="disclaimer-icon">⚠️</span>
                     <div class="disclaimer-content">
                         <p><strong>Demo Notice:</strong> Contains simulated harmful prompts for testing guardrails.</p>
                     </div>
                     <button type="button" class="disclaimer-close-btn" id="disclaimerCloseBtn" title="Dismiss">&times;</button>
                 </div>
-                
-                <!-- Section A: Model Armor Inspection Policies -->
-                <div class="panel-section">
+
+                <!-- Section 1: Test Scenario (tabs rendered from SCENARIO_GROUPS / SCENARIOS in app.js) -->
+                <div class="panel-section scenarios-section scn-card">
                     <div class="section-header">
                         <div class="header-icon-title">
-                            <span class="icon">🛡️</span>
-                            <h3>Inspection Policies</h3>
+                            <h3>Test Scenario</h3>
                         </div>
+                        <button type="button" class="scn-auto-switch" id="scenarioAutoConfig" role="switch" aria-checked="true" title="When on, picking a scenario also sets the Inspection Policies so the intended layer is the one that reacts">
+                            <span class="scn-auto-label">Auto-configure layers</span>
+                            <span class="pol-switch-track" aria-hidden="true"><span class="pol-switch-thumb"></span></span>
+                        </button>
                     </div>
-
-                    <div class="guardrails-list side-by-side">
-                        <!-- Inbound Guardrail Toggle -->
-                        <label class="guardrail-item" title="Inspect user prompts before forwarding to Vertex AI">
-                            <div class="item-top">
-                                <span class="guardrail-badge badge-inbound">Inbound</span>
-                                <input type="checkbox" id="toggleInbound" checked>
-                                <span class="custom-switch"></span>
-                            </div>
-                            <div class="guardrail-info">
-                                <strong>SanitizeUserPrompt</strong>
-                                <span class="template-name"><code>ma-ai-gw-inbound</code></span>
-                                <p>Prompt & injection</p>
-                            </div>
-                        </label>
-
-                        <!-- Outbound Guardrail Toggle -->
-                        <label class="guardrail-item" title="Inspect model responses before delivery to client">
-                            <div class="item-top">
-                                <span class="guardrail-badge badge-outbound">Outbound</span>
-                                <input type="checkbox" id="toggleOutbound" checked>
-                                <span class="custom-switch"></span>
-                            </div>
-                            <div class="guardrail-info">
-                                <strong>SanitizeModelResponse</strong>
-                                <span class="template-name"><code>ma-ai-gw-outbound</code></span>
-                                <p>Harmful output & PII</p>
-                            </div>
-                        </label>
-                    </div>
+                    <div class="scn-tabs" id="scenarioTabs" role="tablist" aria-label="Scenario categories"></div>
+                    <div id="scenarioGroups" class="scn-chips" role="tabpanel"></div>
                 </div>
 
-                <!-- Section B: Test Scenarios & Presets -->
-                <div class="panel-section">
-                    <div class="section-header">
-                        <div class="header-icon-title">
-                            <span class="icon">🎯</span>
-                            <h3>Test Scenarios & Presets</h3>
-                        </div>
-                    </div>
-
-                    <!-- Category 1: Benign Prompts (Top) -->
-                    <div class="preset-group">
-                        <div class="preset-group-title benign-title">
-                            <span class="group-dot dot-green"></span>
-                            <span>Benign Prompts</span>
-                            <span class="group-subtag">Expected 200 OK</span>
-                        </div>
-                        <div class="preset-pills-container">
-                            <button type="button" class="preset-pill success" id="btnPresetMath" title="Expects 200 OK across both proxies">
-                                <span class="pill-icon">🟢</span>
-                                <span class="pill-text">Benign Math (2+2)</span>
-                            </button>
-                            <button type="button" class="preset-pill info" id="btnPresetCreative" title="Visualizes streaming vs buffered latency (short)">
-                                <span class="pill-icon">💡</span>
-                                <span class="pill-text">Creative Story (Robot)</span>
-                            </button>
-                            <button type="button" class="preset-pill info" id="btnPresetLongStory" title="A longer Creative Story (Robot): at least 30 sentences about Paw Patrol">
-                                <span class="pill-icon">📖</span>
-                                <span class="pill-text">Long Story (Paw Patrol Robot)</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Category 2: Harmful Prompts -->
-                    <div class="preset-group">
-                        <div class="preset-group-title harmful-title">
-                            <span class="group-dot dot-red"></span>
-                            <span>Harmful Prompts</span>
-                            <span class="group-subtag">Model Armor Filtering</span>
-                        </div>
-                        <div class="preset-pills-container">
-                            <button type="button" class="preset-pill warning" id="btnPresetJailbreak" title="Tests Prompt Injection & Jailbreak filter">
-                                <span class="pill-icon">🛡️</span>
-                                <span class="pill-text">Jailbreak / DAN</span>
-                            </button>
-                            <button type="button" class="preset-pill danger" id="btnPresetPartialHate" title="Benign Paw Patrol text followed by hate speech mid-stream">
-                                <span class="pill-icon">⚡</span>
-                                <span class="pill-text">Partial Hate Speech</span>
-                            </button>
-                            <button type="button" class="preset-pill danger" id="btnPresetHarassment" title="Immediate harmful speech test">
-                                <span class="pill-icon">⚠️</span>
-                                <span class="pill-text">Harassment / Toxicity</span>
-                            </button>
-                            <button type="button" class="preset-pill danger" id="btnPresetThai" title="Wat Phra Kaew + Thai toxicity test">
-                                <span class="pill-icon">🇹🇭</span>
-                                <span class="pill-text">Thailand Test Prompt</span>
-                            </button>
-                            <button type="button" class="preset-pill danger" id="btnPresetChinese" title="Forbidden City + Chinese toxicity">
-                                <span class="pill-icon">🇨🇳</span>
-                                <span class="pill-text">Simplified Chinese</span>
-                            </button>
-                            <button type="button" class="preset-pill danger" id="btnPresetVietnamese" title="Ha Long Bay + Vietnamese toxicity">
-                                <span class="pill-icon">🇻🇳</span>
-                                <span class="pill-text">Vietnamese Toxicity</span>
-                            </button>
-                            <button type="button" class="preset-pill danger" id="btnPresetMixed" title="Thai festival + Japanese hate speech">
-                                <span class="pill-icon">🇹🇭🇯🇵</span>
-                                <span class="pill-text">Thai + Japanese</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section C: Prompt Input & Trigger Bar -->
+                <!-- Section 2: Prompt Input & Trigger Bar -->
                 <div class="panel-section prompt-box-section">
                     <div class="section-header">
                         <div class="header-icon-title">
-                            <span class="icon">💬</span>
-                            <h3>Prompt Payload</h3>
+                            <h3>Prompt</h3>
                         </div>
                         <span id="charCount" class="char-badge">0 / 4096</span>
                     </div>
 
-                    <textarea id="promptInput" rows="4" placeholder="Enter prompt to send to both proxies..."></textarea>
+                    <textarea id="promptInput" rows="4" placeholder="Enter prompt to test SSE streaming guardrails..."></textarea>
+
+                    <div id="scenarioExpect" class="scn-expect" aria-live="polite" hidden>
+                        <div><span class="scn-expect-label">Expected:</span> <span id="scenarioExpectText"></span></div>
+                        <div class="scn-expect-layers" id="scenarioExpectLayers" hidden></div>
+                    </div>
 
                     <div class="execution-actions">
-                        <button type="button" id="btnRunBoth" class="btn-primary-run">
-                            <span>⚡ Run Comparison (Simultaneous)</span>
+                        <button type="button" id="btnRunStream" class="btn-primary-run">
+                            <span>⚡ Run Streaming Request (SSE)</span>
                         </button>
-                        
-                        <div class="split-run-btns">
-                            <button type="button" id="btnRunNoStream" class="btn-secondary-run" title="Execute non-streaming proxy only">
-                                <span>No-Streaming Only</span>
-                            </button>
-                            <button type="button" id="btnRunStream" class="btn-secondary-run" title="Execute SSE streaming proxy only">
-                                <span>Streaming SSE Only</span>
-                            </button>
-                        </div>
 
                         <div class="utility-btns">
-                            <button type="button" id="btnResetAll" class="btn-util" title="Reset all fields, metrics, and cancel any active streams">
+                            <button type="button" id="btnResetAll" class="btn-util" title="Reset all fields, metrics, and cancel active stream">
                                 <span>🔄 Reset All</span>
                             </button>
-                            <button type="button" id="btnClear" class="btn-util" title="Clear outputs only">
-                                <span>Clear Outputs</span>
+                            <button type="button" id="btnClear" class="btn-util" title="Clear streaming output">
+                                <span>Clear Output</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Section D: Demo Architecture Card -->
-                <div class="panel-section arch-card-section">
-                    <div class="arch-card-header">
-                        <div class="arch-icon-wrapper">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="2" y="2" width="6" height="6" rx="1.5"></rect>
-                                <rect x="16" y="2" width="6" height="6" rx="1.5"></rect>
-                                <rect x="9" y="16" width="6" height="6" rx="1.5"></rect>
-                                <path d="M5 8v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"></path>
-                                <path d="M12 13v3"></path>
-                            </svg>
+                <!-- Section 3: Inspection Policies (one grid row per layer; help behind ⓘ) -->
+                <div class="panel-section pol-card" id="policiesSection">
+                    <div class="section-header">
+                        <div class="header-icon-title">
+                            <h3>Inspection Policies</h3>
                         </div>
-                        <div class="arch-title-group">
-                            <div class="arch-title-row">
-                                <h3 class="arch-title">Demo Architecture</h3>
-                                <span class="arch-pill-tag">Apigee + Model Armor</span>
-                            </div>
+                        <div class="pol-presets" id="policyPresets" role="group" aria-label="Global policy presets">
+                            <button type="button" class="pol-preset" data-preset="strict" title="Static In/Out: Enforce · Model Armor In/Out: On · NeMo: Enforce">Strict</button>
+                            <button type="button" class="pol-preset" data-preset="safeflow" title="Static In: Enforce, Out: Redact · Model Armor In/Out: On · NeMo: Enforce">Safe-flow</button>
+                            <button type="button" class="pol-preset" data-preset="observe" title="Static In/Out: Monitor · Model Armor: Off (no monitor mode) · NeMo: Monitor">Observe</button>
+                            <button type="button" class="pol-preset" data-preset="off" title="All layers Off">Off</button>
                         </div>
                     </div>
-                    <p class="arch-desc">
-                        Visual overview of how Apigee X, Google Cloud Model Armor, and Vertex AI Gemini 2.5 interact to enforce inbound and outbound LLM security guardrails.
-                    </p>
-                    <button type="button" id="btnViewArchDiagram" class="btn-view-arch" title="View interactive architecture diagram modal">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            <line x1="11" y1="8" x2="11" y2="14"></line>
-                            <line x1="8" y1="11" x2="14" y2="11"></line>
-                        </svg>
-                        <span>View Architecture Diagram</span>
-                    </button>
+
+                    <div class="pol-summary" id="policiesSummary" hidden></div>
+
+                    <div class="pol-grid" id="policiesGrid" role="table" aria-label="Guardrail layers by direction">
+                        <div class="pol-row pol-head" role="row">
+                            <span role="columnheader">Layer</span>
+                            <span role="columnheader">In</span>
+                            <span role="columnheader">Out</span>
+                            <span role="columnheader">Rail</span>
+                        </div>
+
+                        <!-- Static Guardrails: Apigee StaticGuardrails SharedFlow (regex + JS, no model call) -->
+                        <div class="pol-row pol-static" role="row">
+                            <span class="pol-name" role="cell" title="Deterministic regex / lexicon checks in Apigee. Runs before Model Armor.">
+                                <span>Static Guardrails</span>
+                                <button type="button" class="pol-info" id="btnSgDetails" aria-haspopup="dialog" aria-controls="sgModalOverlay" title="Static Guardrails (in Apigee): StaticGuardrails SharedFlow inbound, EventFlow JS scanner outbound. Custom, rule-based demo: complements, but does not replace, official guardrails like Model Armor. Click for details.">ⓘ</button>
+                            </span>
+                            <span role="cell">
+                                <select class="pol-select" id="staticMode" data-value="enforce" aria-label="Static guardrails inbound mode">
+                                    <option value="enforce">Enforce</option>
+                                    <option value="monitor">Monitor</option>
+                                    <option value="disable">Off</option>
+                                </select>
+                            </span>
+                            <span role="cell">
+                                <select class="pol-select" id="staticOutMode" data-value="enforce" aria-label="Static guardrails outbound mode">
+                                    <option value="enforce">Enforce</option>
+                                    <option value="redact">Redact</option>
+                                    <option value="monitor">Monitor</option>
+                                    <option value="disable">Off</option>
+                                </select>
+                            </span>
+                            <span role="cell" class="pol-na">—</span>
+                        </div>
+
+                        <!-- Model Armor: SanitizeUserPrompt / SanitizeModelResponse policies -->
+                        <div class="pol-row pol-ma" role="row">
+                            <span class="pol-name" role="cell" title="Google Cloud Model Armor via SanitizeUserPrompt (SUP) and SanitizeModelResponse (SMR)">
+                                <span>Model Armor</span>
+                                <button type="button" class="pol-info" id="btnMaDetails" aria-haspopup="dialog" aria-controls="maModalOverlay" title="Google Cloud Model Armor · SUP (ma-ai-gw-inbound) + SMR (ma-ai-gw-outbound, streaming EventFlow). Click for details.">ⓘ</button>
+                            </span>
+                            <span role="cell">
+                                <button type="button" class="pol-switch" id="maInMode" role="switch" data-value="enforce" aria-label="Model Armor inbound (SanitizeUserPrompt)">
+                                    <span class="pol-switch-track" aria-hidden="true"><span class="pol-switch-thumb"></span></span>
+                                </button>
+                            </span>
+                            <span role="cell">
+                                <button type="button" class="pol-switch" id="maOutMode" role="switch" data-value="enforce" aria-label="Model Armor outbound (SanitizeModelResponse)">
+                                    <span class="pol-switch-track" aria-hidden="true"><span class="pol-switch-thumb"></span></span>
+                                </button>
+                            </span>
+                            <span role="cell" class="pol-na">—</span>
+                        </div>
+
+                        <!-- NVIDIA NeMo Guardrails (Cloud Run) via Apigee ServiceCallout - inbound only -->
+                        <div class="pol-row pol-nemo" role="row">
+                            <span class="pol-name" role="cell" title="NVIDIA NeMo Guardrails on Cloud Run via ServiceCallout (inbound only)">
+                                <span>NeMo Guardrails</span>
+                                <button type="button" class="pol-info" id="btnNemoDetails" aria-haspopup="dialog" aria-controls="nemoModalOverlay" title="NVIDIA NeMo Guardrails on Cloud Run, called via ServiceCallout · inbound only (EventFlow cannot run ServiceCallout). Click for details.">ⓘ</button>
+                            </span>
+                            <span role="cell">
+                                <select class="pol-select" id="nemoMode" data-value="enforce" aria-label="NeMo Guardrails inbound mode">
+                                    <option value="enforce">Enforce</option>
+                                    <option value="monitor">Monitor</option>
+                                    <option value="disable">Off</option>
+                                </select>
+                            </span>
+                            <span role="cell" class="pol-na" title="Inbound only">—</span>
+                            <span role="cell">
+                                <select class="pol-select" id="nemoProfile" data-value="jailbreak_self_check" aria-label="NeMo Guardrails rail profile">
+                                    <option value="jailbreak_self_check">Jailbreak</option>
+                                    <option value="content_safety">Safety</option>
+                                    <option value="topic_control">Topic</option>
+                                </select>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="pol-footer">
+                        <button type="button" class="pol-link" id="btnCompareDetails" aria-haspopup="dialog" aria-controls="compareModalOverlay" title="Comparative breakdown of Static, Model Armor, and NeMo">⚖ When to choose what</button>
+                        <button type="button" class="pol-link" id="policiesCollapseToggle" aria-expanded="true" aria-controls="policiesGrid">Collapse ▴</button>
+                    </div>
                 </div>
 
             </aside>
@@ -310,187 +271,112 @@
                 <div class="splitter-line"></div>
             </div>
 
-            <!-- RIGHT MAIN AREA: Side-by-Side Result Panes -->
+            <!-- RIGHT MAIN AREA: Full-Width Streaming SSE & Bottom-Right Docked Buffer -->
             <section class="results-area" id="rightArea">
-                <div class="results-grid">
-                    
-                    <!-- Left Card: Non-Streaming Buffer -->
-                    <div class="result-card" id="cardNoStream">
-                        <div class="card-header">
-                            <div class="proxy-identity">
-                                <span class="proxy-type-tag tag-json">REST / JSON Buffer</span>
-                                <h3>SMR-no-streaming</h3>
-                                <span class="endpoint-path">/smr-no-streaming</span>
+                
+                <!-- Main Primary Card: Streaming SSE (Occupies Full Wide Screen) -->
+                <div class="result-card result-card-streaming" id="cardStream">
+                    <div class="card-header">
+                        <div class="proxy-identity">
+                            <span class="proxy-type-tag tag-sse">Server-Sent Events (SSE)</span>
+                            <div class="proxy-title-row">
+                                <h3>guardrail-proxy</h3>
+                                <span class="wide-view-badge" id="wideViewBadge" title="Real-time Server-Sent Events (SSE) Proxy">
+                                    <span class="badge-pulse-dot"></span>
+                                    <span>Live Streaming View</span>
+                                </span>
+                                <span class="auth-key-pill" title="Enforced by VerifyAPIKey (Developer App: modelarmor-streaming-demo-app)">
+                                    <span>🔑 VerifyAPIKey</span>
+                                </span>
                             </div>
-                            <div class="status-indicator" id="statusNoStream">
-                                <span class="status-pill status-idle">IDLE</span>
-                            </div>
+                            <span class="endpoint-path">/guardrail-proxy</span>
                         </div>
-
-                        <div class="metrics-bar" id="metricsNoStream">
-                            <div class="metric-item">
-                                <span class="metric-label">TTFT (First Token)</span>
-                                <span class="metric-val" id="ttftNoStream">Waiting...</span>
-                            </div>
-                            <div class="metric-item">
-                                <span class="metric-label">Total Duration</span>
-                                <span class="metric-val" id="totalTimeNoStream">Waiting...</span>
-                            </div>
-                            <div class="metric-item">
-                                <span class="metric-label">HTTP Status</span>
-                                <span class="metric-val" id="httpCodeNoStream">...</span>
-                            </div>
-                        </div>
-
-                        <div class="security-banner banner-idle" id="securityBannerNoStream">
-                            <span class="security-icon" id="securityIconNoStream">🛡️</span>
-                            <div class="security-text">
-                                <strong id="securityTitleNoStream">Awaiting Request</strong>
-                                <p id="securityDescNoStream">Ready to evaluate Model Armor inbound & outbound policies.</p>
-                            </div>
-                        </div>
-
-                        <div class="output-container">
-                            <div class="output-header">
-                                <span>Response Output</span>
-                                <span class="token-leak-indicator" id="leakIndicatorNoStream">Leakage: None</span>
-                            </div>
-                            <div class="output-body" id="outputNoStream">
-                                <span class="placeholder-text">Click "Run Comparison" to initiate request...</span>
-                            </div>
-                        </div>
-
-                        <!-- Threat & Sanitization Audit Breakdown -->
-                        <div class="audit-card" id="auditSectionNoStream">
-                            <div class="audit-header">
-                                <div class="audit-title-wrap">
-                                    <span class="audit-title-icon">🛡️</span>
-                                    <span class="audit-title">Security & Guardrails Audit</span>
-                                </div>
-                                <span class="audit-status-badge" id="auditBadgeNoStream">IDLE</span>
-                            </div>
-                            <div class="audit-grid">
-                                <div class="audit-panel bad-prompt-panel">
-                                    <div class="panel-header">
-                                        <span class="panel-icon">📥</span>
-                                        <span class="panel-title">Inbound Guardrail (Request / SUP):</span>
-                                    </div>
-                                    <div class="panel-content" id="auditBadPromptNoStream">
-                                        <span class="placeholder-text">Awaiting execution...</span>
-                                    </div>
-                                </div>
-                                <div class="audit-panel bad-response-panel">
-                                    <div class="panel-header">
-                                        <span class="panel-icon">📤</span>
-                                        <span class="panel-title">Outbound Guardrail (Response / SMR):</span>
-                                    </div>
-                                    <div class="panel-content" id="auditBadResponseNoStream">
-                                        <span class="placeholder-text">Awaiting execution...</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <details class="debug-drawer">
-                            <summary>Raw Gateway Inspection Payload</summary>
-                            <pre class="debug-pre" id="debugNoStream">// Debug details will appear here</pre>
-                        </details>
-                    </div>
-
-                    <!-- Right Card: Streaming SSE -->
-                    <div class="result-card" id="cardStream">
-                        <div class="card-header">
-                            <div class="proxy-identity">
-                                <span class="proxy-type-tag tag-sse">Server-Sent Events (SSE)</span>
-                                <h3>SMR-streaming-sse</h3>
-                                <span class="endpoint-path">/smr-streaming-sse</span>
-                            </div>
+                        <div class="card-header-actions">
                             <div class="status-indicator" id="statusStream">
                                 <span class="status-pill status-idle">IDLE</span>
                             </div>
                         </div>
-
-                        <div class="metrics-bar" id="metricsStream">
-                            <div class="metric-item">
-                                <span class="metric-label">TTFT (First Token)</span>
-                                <span class="metric-val" id="ttftStream">Waiting...</span>
-                            </div>
-                            <div class="metric-item">
-                                <span class="metric-label">Total Duration</span>
-                                <span class="metric-val" id="totalTimeStream">Waiting...</span>
-                            </div>
-                            <div class="metric-item">
-                                <span class="metric-label">HTTP Status</span>
-                                <span class="metric-val" id="httpCodeStream">...</span>
-                            </div>
-                        </div>
-
-                        <div class="security-banner banner-idle" id="securityBannerStream">
-                            <span class="security-icon" id="securityIconStream">🛡️</span>
-                            <div class="security-text">
-                                <strong id="securityTitleStream">Awaiting Stream</strong>
-                                <p id="securityDescStream">Ready to evaluate EventFlow streaming guardrails.</p>
-                            </div>
-                        </div>
-
-                        <div class="output-container">
-                            <div class="output-header">
-                                <span>Streaming Token Stream</span>
-                                <span class="token-leak-indicator" id="leakIndicatorStream">Leakage: None</span>
-                            </div>
-                            <div class="output-body" id="outputStream">
-                                <span class="placeholder-text">Click "Run Comparison" to initiate request...</span>
-                            </div>
-                        </div>
-
-                        <!-- Threat & Sanitization Audit Breakdown -->
-                        <div class="audit-card" id="auditSectionStream">
-                            <div class="audit-header">
-                                <div class="audit-title-wrap">
-                                    <span class="audit-title-icon">🛡️</span>
-                                    <span class="audit-title">Security & Guardrails Audit</span>
-                                </div>
-                                <span class="audit-status-badge" id="auditBadgeStream">IDLE</span>
-                            </div>
-                            <div class="audit-grid">
-                                <div class="audit-panel bad-prompt-panel">
-                                    <div class="panel-header">
-                                        <span class="panel-icon">📥</span>
-                                        <span class="panel-title">Inbound Guardrail (Request / SUP):</span>
-                                    </div>
-                                    <div class="panel-content" id="auditBadPromptStream">
-                                        <span class="placeholder-text">Awaiting execution...</span>
-                                    </div>
-                                </div>
-                                <div class="audit-panel bad-response-panel">
-                                    <div class="panel-header">
-                                        <span class="panel-icon">📤</span>
-                                        <span class="panel-title">Outbound Guardrail (Response / SMR):</span>
-                                    </div>
-                                    <div class="panel-content" id="auditBadResponseStream">
-                                        <span class="placeholder-text">Awaiting execution...</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Real-time Event Stream Timeline -->
-                        <details class="events-log-drawer" open>
-                            <summary>
-                                <span>Real-Time SSE Chunk Timeline</span>
-                                <span class="events-count-badge" id="eventsCountStream">0</span>
-                            </summary>
-                            <div class="events-log-list" id="eventsLogListStream">
-                                <div class="event-log-entry-placeholder">Awaiting SSE events...</div>
-                            </div>
-                        </details>
-
-                        <details class="debug-drawer">
-                            <summary>Raw Stream Inspection Payload</summary>
-                            <pre class="debug-pre" id="debugStream">// Stream debug info will appear here</pre>
-                        </details>
                     </div>
 
+                    <div class="metrics-bar" id="metricsStream">
+                        <div class="metric-item">
+                            <span class="metric-label">TTFT (First Token)</span>
+                            <span class="metric-val" id="ttftStream">Waiting...</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Total Duration</span>
+                            <span class="metric-val" id="totalTimeStream">Waiting...</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">HTTP Status</span>
+                            <span class="metric-val" id="httpCodeStream">...</span>
+                        </div>
+                    </div>
+
+                    <div class="security-banner banner-idle" id="securityBannerStream">
+                        <span class="security-icon" id="securityIconStream">🛡️</span>
+                        <div class="security-text">
+                            <strong id="securityTitleStream">Awaiting Stream</strong>
+                            <p id="securityDescStream">Ready to evaluate EventFlow streaming guardrails.</p>
+                        </div>
+                    </div>
+
+                    <div class="output-container">
+                        <div class="output-header">
+                            <span>Streaming Token Stream</span>
+                            <span class="token-leak-indicator" id="leakIndicatorStream">Leakage: None</span>
+                        </div>
+                        <div class="output-body" id="outputStream">
+                            <span class="placeholder-text">Click "Run Streaming Request" to initiate request...</span>
+                        </div>
+                    </div>
+
+                    <!-- Threat & Sanitization Audit Breakdown -->
+                    <div class="audit-card" id="auditSectionStream">
+                        <div class="audit-header">
+                            <div class="audit-title-wrap">
+                                <span class="audit-title-icon">🛡️</span>
+                                <span class="audit-title">Security & Guardrails Audit</span>
+                            </div>
+                            <span class="audit-status-badge" id="auditBadgeStream">IDLE</span>
+                        </div>
+                        <div class="audit-grid">
+                            <div class="audit-panel bad-prompt-panel">
+                                <div class="panel-header">
+                                    <span class="panel-icon">📥</span>
+                                    <span class="panel-title">Inbound Guardrail (Request):</span>
+                                </div>
+                                <div class="panel-content" id="auditBadPromptStream">
+                                    <span class="placeholder-text">Awaiting execution...</span>
+                                </div>
+                            </div>
+                            <div class="audit-panel bad-response-panel">
+                                <div class="panel-header">
+                                    <span class="panel-icon">📤</span>
+                                    <span class="panel-title">Outbound Guardrail (Response):</span>
+                                </div>
+                                <div class="panel-content" id="auditBadResponseStream">
+                                    <span class="placeholder-text">Awaiting execution...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Real-time Event Stream Timeline -->
+                    <details class="events-log-drawer" open>
+                        <summary>
+                            <span>Real-Time SSE Chunk Timeline</span>
+                            <span class="events-count-badge" id="eventsCountStream">0</span>
+                        </summary>
+                        <div class="events-log-list" id="eventsLogListStream">
+                            <div class="event-log-entry-placeholder">Awaiting SSE events...</div>
+                        </div>
+                    </details>
+
+                    <details class="debug-drawer">
+                        <summary>Raw Stream Inspection Payload</summary>
+                        <pre class="debug-pre" id="debugStream">// Stream debug info will appear here</pre>
+                    </details>
                 </div>
 
             </section>
@@ -518,7 +404,7 @@
                         <h3>Model Armor Security & Audit Analytics</h3>
                         <span class="admin-badge">Cloud Logging: <code>apigee-ai-sanitized-prompts</code></span>
                     </div>
-                    <span class="admin-subtitle">Monitoring inspection volume, violation classifications & sanitized payloads for both proxies</span>
+                    <span class="admin-subtitle">Monitoring inspection volume, violation classifications & sanitized payloads for guardrail-proxy</span>
                 </div>
             </div>
             <div class="admin-header-right">
@@ -544,9 +430,8 @@
                     <div class="proxy-select-wrap">
                         <span class="toolbar-label">Proxy View:</span>
                         <select id="adminProxySelect" class="admin-select">
-                            <option value="all">Both Proxies (Combined)</option>
-                            <option value="SMR-no-streaming">SMR-no-streaming</option>
-                            <option value="SMR-streaming-sse">SMR-streaming-sse</option>
+                            <option value="guardrail-proxy" selected>guardrail-proxy (Streaming)</option>
+                            <option value="all">All Traffic</option>
                         </select>
                     </div>
 
@@ -674,56 +559,1087 @@
             <div class="modal-header">
                 <div class="modal-title-group">
                     <img src="assets/google-cloud.png" alt="Google Cloud" class="arch-modal-gcp-logo">
-                    <h3>Apigee X + Model Armor Architecture</h3>
-                    <span class="arch-modal-badge">Zero-Trust LLM Guardrails</span>
+                    <h3>Apigee X Multi-Layer Guardrails Architecture</h3>
+                    <span class="arch-modal-badge">Static + Model Armor + NeMo</span>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <a href="assets/architecture-diagram.png" target="_blank" download="apigee-modelarmor-architecture.png" class="btn-modal-copy" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; font-size: 12px;">⬇️ Download PNG</a>
+                    <a href="assets/architecture-diagram.png?v=2" target="_blank" download="apigee-multi-layer-guardrails-architecture.png" class="btn-modal-copy" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; font-size: 12px;">⬇️ Download PNG</a>
                     <button type="button" class="modal-close-btn" id="archModalCloseBtn">&times;</button>
                 </div>
             </div>
             <div class="modal-body arch-modal-body">
                 <div class="arch-diagram-wrapper">
-                    <img src="assets/architecture-diagram.png" alt="Apigee X & Model Armor Architecture Diagram" class="arch-modal-img">
+                    <img src="assets/architecture-diagram.png?v=2" alt="Apigee X Multi-Layer Guardrails Architecture Diagram" class="arch-modal-img">
                 </div>
 
-                <!-- 5 Architectural Steps (Matching Image 2) -->
+                <!-- 5 Architectural Steps -->
                 <div class="arch-steps-grid">
                     <div class="arch-step-card">
                         <span class="step-num">STEP 1</span>
-                        <h4 class="step-title">Web UI & Dual Ingress</h4>
-                        <p class="step-desc">Comparative workspace sends parallel prompts to buffered & streaming endpoints with <code>x-inbound</code> and <code>x-outbound</code> policy headers.</p>
+                        <h4 class="step-title">Web UI & Policy Headers</h4>
+                        <p class="step-desc">Playground streams prompts to <code>/guardrail-proxy</code> with per-layer runtime toggle headers.</p>
                     </div>
                     <div class="arch-step-card">
                         <span class="step-num">STEP 2</span>
-                        <h4 class="step-title">Apigee X Gateway</h4>
-                        <p class="step-desc">Evaluates header flags (<code>AM-Set-Guardrail-Flags</code>), mints GoogleAccessToken natively, and routes traffic via HTTP or Server-Sent Events.</p>
+                        <h4 class="step-title">In-Gateway Static Guardrails</h4>
+                        <p class="step-desc">Executes inside Apigee via <code>FC-StaticGuardrails</code> SharedFlow (~80ms, $0) to enforce schema, payload limits, regex, and token estimations first.</p>
                     </div>
                     <div class="arch-step-card">
                         <span class="step-num">STEP 3</span>
-                        <h4 class="step-title">Model Armor Inbound (SUP)</h4>
-                        <p class="step-desc"><code>SanitizeUserPrompt</code> intercepts Prompt Injections and Jailbreaks in ~750ms against <code>ma-ai-gw-inbound</code> with 0 tokens sent to Vertex AI.</p>
+                        <h4 class="step-title">Model Armor & NeMo (Inbound)</h4>
+                        <p class="step-desc">Calls <code>SanitizeUserPrompt</code> (~300ms) for Prompt Injection/SDP, then invokes <code>SC-NeMo-Input</code> on Cloud Run for Colang topical & persona rails.</p>
                     </div>
                     <div class="arch-step-card">
                         <span class="step-num">STEP 4</span>
-                        <h4 class="step-title">Gemini 2.5 Flash Lite</h4>
-                        <p class="step-desc">Foundation Model in <code>us-central1</code> generates multimodal inference via <code>:generateContent</code> (REST) or <code>:streamGenerateContent</code> (SSE).</p>
+                        <h4 class="step-title">Gemini 3.5 Flash Lite</h4>
+                        <p class="step-desc">Foundation Model in <code>locations/global</code> generates inference via <code>:streamGenerateContent?alt=sse</code> or buffered <code>:generateContent</code>.</p>
                     </div>
                     <div class="arch-step-card">
                         <span class="step-num">STEP 5</span>
-                        <h4 class="step-title">Outbound SMR & Forensics</h4>
-                        <p class="step-desc">Guarantees <strong>Zero-Token Leakage</strong> on REST and <strong>In-Flight Cutoff</strong> on SSE. <code>PostClientFlow</code> records forensics to Cloud Logging.</p>
+                        <h4 class="step-title">Outbound EventFlow & Forensics</h4>
+                        <p class="step-desc">Runs <code>JS-SG-Outbound-Scan</code> (in-Apigee redaction) + <code>SMR-modelresponse</code> (streaming cutoff) and logs structured telemetry via <code>PostClientFlow</code>.</p>
                     </div>
                 </div>
             </div>
             <div class="modal-footer" style="justify-content: space-between;">
-                <span style="font-size: 12px; color: var(--text-muted);">Apigee X Enterprise AI Gateway & Centralized Model Armor Inspection Engine (Multi-Region 'us')</span>
+                <span style="font-size: 12px; color: var(--text-muted);">Apigee X Enterprise AI Gateway • Static Guardrails (In-Gateway) • Google Cloud Model Armor • NVIDIA NeMo Guardrails (Cloud Run)</span>
                 <button type="button" class="btn-modal-close" id="btnArchModalCloseAction">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATIC GUARDRAILS (IN APIGEE) DETAILS MODAL -->
+    <div class="modal-overlay" id="sgModalOverlay" style="display: none;">
+        <div class="modal-card nemo-modal-card sg-modal-card" role="dialog" aria-modal="true" aria-labelledby="sgModalTitle">
+            <div class="modal-header nemo-modal-header">
+                <div class="modal-title-group">
+                    <img src="assets/apigee-logo.svg" alt="Apigee" class="nemo-modal-logo">
+                    <h3 id="sgModalTitle">Static Guardrails (in Apigee)</h3>
+                    <span class="nemo-modal-tag">Deterministic · no model call · ~80 ms</span>
+                </div>
+                <button type="button" class="modal-close-btn" id="sgModalCloseBtn" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body nemo-modal-body">
+                <div class="sg-disclaimer sg-disclaimer-modal" role="note">
+                    <span class="sg-disclaimer-icon" aria-hidden="true">⚠</span>
+                    <div>
+                        <strong>Disclaimer: custom, static rule-based implementation</strong>
+                        <p>These Static Guardrails are a custom demo built from regex, keyword lists and JavaScript rules in Apigee. They only catch patterns they were written for, can be bypassed by paraphrasing, and are not a supported product. Use them as a fast, low-cost <em>first layer</em> that complements, and does <strong>not</strong> replace, official guardrail solutions such as <strong>Google Cloud Model Armor</strong>.</p>
+                    </div>
+                </div>
+                <p class="nemo-lead">The cheapest, fastest layer: a reusable <strong>StaticGuardrails SharedFlow</strong> built only from native Apigee policies — JSON threat limits, <code>RegularExpressionProtection</code> signatures and JavaScript validators — plus a JavaScript scanner in the streaming <code>EventFlow</code>. Known-bad patterns are stopped at the gateway before any tokens are spent on Model Armor, NeMo or Gemini.</p>
+
+                <div class="nemo-section">
+                    <div class="modal-section-title">Architecture — How Apigee Executes Static Guardrails</div>
+                    <div class="nemo-flow-card" role="img" aria-label="Architecture diagram showing Client calling Apigee, Apigee executing Static Guardrails engine on top via native SharedFlow and EventFlow, and Apigee streaming to Gemini 3.5 Flash Lite">
+                        
+                        <div class="sg-topo">
+                            
+                            <!-- Left: Client Application -->
+                            <div class="nemo-box nemo-box-client">
+                                <div class="nemo-box-badge">CLIENT LAYER</div>
+                                <div class="nemo-box-title">
+                                    <span class="nemo-box-icon-emoji">💻</span>
+                                    <span>Client Application</span>
+                                </div>
+                                <div class="nemo-box-body">
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>Inbound Prompt</strong>
+                                            <p>Sends prompt via API request</p>
+                                        </div>
+                                    </div>
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>Enforcement Response</strong>
+                                            <p>Receives SSE stream or 400 refusal</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Horizontal Connector: Client <-> Apigee -->
+                            <div class="nemo-connector-h">
+                                <div class="nemo-conn-line nemo-conn-out">
+                                    <span class="nemo-conn-text">POST /guardrail-proxy</span>
+                                    <span class="nemo-conn-arrow">&rarr;</span>
+                                </div>
+                                <div class="nemo-conn-line nemo-conn-in">
+                                    <span class="nemo-conn-arrow">&larr;</span>
+                                    <span class="nemo-conn-text">SSE Stream / 400 Refusal</span>
+                                </div>
+                                <span class="nemo-conn-tag">HTTPS &bull; API Key</span>
+                            </div>
+
+                            <!-- Middle: Google Cloud Apigee (Static Guardrails Running In-Process as JavaScript) -->
+                            <div class="nemo-box nemo-box-apigee sg-box-apigee">
+                                <div>
+                                    <div class="nemo-box-badge">API GATEWAY &bull; IN-PROCESS JAVASCRIPT EXECUTION</div>
+                                    <div class="nemo-box-title">
+                                        <img src="assets/apigee-logo.svg" alt="Apigee" class="nemo-box-icon">
+                                        <span>Google Cloud Apigee</span>
+                                        <span class="sg-inprocess-tag">Internal JS &bull; No Remote Calls</span>
+                                    </div>
+                                    <div class="nemo-box-body">
+                                        <div class="nemo-step-pill">
+                                            <span class="nemo-step-num sg-step-num">1</span>
+                                            <div>
+                                                <strong>Inbound PreFlow: Native Policy &amp; JavaScript Pipeline</strong>
+                                                <p>Executed via <code>FC-StaticGuardrails</code> SharedFlow: <code>JSONThreatProtection</code> limits &bull; <code>JS-SG-Normalize</code> (homoglyphs/leetspeak) &bull; <code>RegEx</code> injection checks &bull; <code>JS-SG-Decide</code> 400 block before invoking target</p>
+                                            </div>
+                                        </div>
+                                        <div class="nemo-step-pill">
+                                            <span class="nemo-step-num sg-step-num">2</span>
+                                            <div>
+                                                <strong>Outbound EventFlow: In-Process Streaming Scanner (JavaScript)</strong>
+                                                <p>Executed per SSE chunk: 64-character holdback window &bull; real-time in-memory Regex/PII scanning &bull; in-flight <code>[REDACTED]</code> masking or immediate connection termination</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="sg-inprocess-banner">
+                                    <span>⚡</span>
+                                    <span><strong>100% In-Process Runtime:</strong> Unlike Model Armor &amp; NeMo which invoke external services over HTTP, Static Guardrails execute entirely inside Apigee with ~80ms in-memory latency and zero network roundtrips.</span>
+                                </div>
+                            </div>
+
+                            <!-- Horizontal Connector: Apigee <-> Gemini -->
+                            <div class="nemo-connector-h">
+                                <div class="nemo-conn-line nemo-conn-out">
+                                    <span class="nemo-conn-text">Forward (if clean)</span>
+                                    <span class="nemo-conn-arrow">&rarr;</span>
+                                </div>
+                                <div class="nemo-conn-line nemo-conn-in">
+                                    <span class="nemo-conn-arrow">&larr;</span>
+                                    <span class="nemo-conn-text">Streaming Tokens</span>
+                                </div>
+                                <span class="nemo-conn-tag">TargetEndpoint</span>
+                            </div>
+
+                            <!-- Right: Target Model Gemini 3.5 Flash Lite -->
+                            <div class="nemo-box nemo-box-target">
+                                <div class="nemo-box-badge">TARGET BACKEND</div>
+                                <div class="nemo-box-title">
+                                    <img src="assets/gcp-logo.svg" alt="Gemini" class="nemo-box-icon">
+                                    <span>Gemini 3.5 Flash Lite</span>
+                                </div>
+                                <div class="nemo-box-body">
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>Vertex AI Foundation Model</strong>
+                                            <p>Executes streaming inference</p>
+                                        </div>
+                                    </div>
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>Target Response</strong>
+                                            <p>Streams tokens back through Apigee EventFlow</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Highlights Strip -->
+                        <div class="nemo-flow-footer">
+                            <div class="nemo-footer-item">
+                                <span class="nemo-footer-icon">⚡</span>
+                                <span><strong>Zero-Cost Pre-Filter:</strong> Evaluated natively in Apigee in ~80ms before any downstream LLM or external guardrail API tokens are spent.</span>
+                            </div>
+                            <div class="nemo-footer-item">
+                                <span class="nemo-footer-icon">🔍</span>
+                                <span><strong>Deterministic &amp; Explainable:</strong> Exact rule IDs (e.g. <code>SG-PI-001</code>, <code>SG-SEC-002</code>) with zero hallucination and zero false-positive drift.</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="nemo-section">
+                    <div class="modal-section-title">What it detects</div>
+                    <div class="nemo-rails-grid">
+                        <div class="nemo-rail"><span class="nemo-rail-name">Prompt injection</span><span class="nemo-rail-desc">Instruction override, DAN / developer mode, system-prompt extraction, chat-template tokens; ZH / JA / VI / TH variants.</span></div>
+                        <div class="nemo-rail"><span class="nemo-rail-name">Code &amp; command injection</span><span class="nemo-rail-desc">SQL injection, XSS, template injection, shell commands, path traversal.</span></div>
+                        <div class="nemo-rail"><span class="nemo-rail-name">Secrets &amp; PII</span><span class="nemo-rail-desc">Cloud keys and tokens; Luhn-checked cards, SG NRIC/FIN, Thai ID, email.</span></div>
+                        <div class="nemo-rail"><span class="nemo-rail-name">Harsh language</span><span class="nemo-rail-desc">Tiered multilingual lexicon (threats · profanity block, mild insults log) with an allow-list for false positives.</span></div>
+                        <div class="nemo-rail"><span class="nemo-rail-name">Business deny-list</span><span class="nemo-rail-desc">Custom terms with BLOCK or FLAG severity, e.g. a confidential project name.</span></div>
+                        <div class="nemo-rail"><span class="nemo-rail-name">Structural abuse</span><span class="nemo-rail-desc">Oversized prompts, too many turns, zero-width and control-character smuggling.</span></div>
+                    </div>
+                </div>
+
+                <div class="nemo-section">
+                    <div class="modal-section-title">Modes</div>
+                    <ul class="nemo-list nemo-list-compact">
+                        <li><strong>Inbound:</strong> Enforce (400 before Gemini) · Monitor (log would-block, allow) · Off.</li>
+                        <li><strong>Outbound:</strong> Enforce (cut the stream) · Redact (mask secrets/PII in-flight as <code>[REDACTED:rule]</code>) · Monitor · Off.</li>
+                        <li>The 400 response is sanitized — it returns the rule ID and category but never echoes the matched text.</li>
+                    </ul>
+                </div>
+
+                <div class="nemo-section nemo-demo-box sg-demo-box">
+                    <div class="modal-section-title">Why a static layer?</div>
+                    <ul class="nemo-list nemo-list-compact">
+                        <li><strong>Fast and free:</strong> about 80 ms, no external call, no per-request inspection cost.</li>
+                        <li><strong>Explainable:</strong> every block maps to a rule ID (e.g. <code>SG-PI-001</code>) you can audit.</li>
+                        <li><strong>Tunable without redeploys:</strong> word lists and limits live in an environment property set.</li>
+                        <li><strong>Complements ML layers:</strong> Model Armor and NeMo catch the paraphrased attacks regex can't.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <div class="nemo-links">
+                    <a href="https://docs.cloud.google.com/apigee/docs/api-platform/reference/policies/regular-expression-protection" target="_blank" rel="noopener noreferrer">RegularExpressionProtection ↗</a>
+                    <a href="https://docs.cloud.google.com/apigee/docs/api-platform/fundamentals/shared-flows" target="_blank" rel="noopener noreferrer">Shared flows ↗</a>
+                </div>
+                <button type="button" class="btn-modal-close" id="btnSgModalCloseAction">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GOOGLE CLOUD MODEL ARMOR DETAILS MODAL (summary of docs.cloud.google.com/model-armor/overview) -->
+    <div class="modal-overlay" id="maModalOverlay" style="display: none;">
+        <div class="modal-card nemo-modal-card ma-modal-card" role="dialog" aria-modal="true" aria-labelledby="maModalTitle">
+            <div class="modal-header nemo-modal-header">
+                <div class="modal-title-group">
+                    <img src="assets/model-armor-logo.svg" alt="Model Armor" class="nemo-modal-logo">
+                    <h3 id="maModalTitle">Google Cloud Model Armor</h3>
+                    <span class="nemo-modal-tag">Managed service · Security &amp; AI safety</span>
+                </div>
+                <button type="button" class="modal-close-btn" id="maModalCloseBtn" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body nemo-modal-body">
+                <p class="nemo-lead">A Google Cloud service that enhances the security and safety of AI applications by <strong>proactively screening LLM prompts and responses</strong>. Whether AI runs on Google Cloud or another cloud, it helps prevent malicious input, verify content safety, protect sensitive data, maintain compliance, and enforce AI safety and security policies consistently.</p>
+
+                <div class="nemo-section">
+                    <div class="modal-section-title">Architecture — How Apigee Integrates with Model Armor</div>
+                    <div class="nemo-flow-card" role="img" aria-label="Architecture diagram showing Client calling Apigee, Apigee calling Model Armor engine on top via native policies, and Apigee streaming to Gemini 3.5 Flash Lite">
+                        
+                        <div class="nemo-topo">
+                            
+                            <!-- Left: Client Application -->
+                            <div class="nemo-box nemo-box-client">
+                                <div class="nemo-box-badge">CLIENT LAYER</div>
+                                <div class="nemo-box-title">
+                                    <span class="nemo-box-icon-emoji">💻</span>
+                                    <span>Client Application</span>
+                                </div>
+                                <div class="nemo-box-body">
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>Inbound Prompt</strong>
+                                            <p>Sends prompt via API request</p>
+                                        </div>
+                                    </div>
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>Enforcement Response</strong>
+                                            <p>Receives SSE stream or 400 refusal</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Horizontal Connector: Client <-> Apigee -->
+                            <div class="nemo-connector-h">
+                                <div class="nemo-conn-line nemo-conn-out">
+                                    <span class="nemo-conn-text">POST /guardrail-proxy</span>
+                                    <span class="nemo-conn-arrow">&rarr;</span>
+                                </div>
+                                <div class="nemo-conn-line nemo-conn-in">
+                                    <span class="nemo-conn-arrow">&larr;</span>
+                                    <span class="nemo-conn-text">SSE Stream / 400 Refusal</span>
+                                </div>
+                                <span class="nemo-conn-tag">HTTPS &bull; API Key</span>
+                            </div>
+
+                            <!-- Middle Column: Model Armor (Top) & Apigee (Bottom) -->
+                            <div class="nemo-mid-col">
+                                
+                                <!-- Top Box: Google Cloud Model Armor Service -->
+                                <div class="nemo-box nemo-box-ma">
+                                    <div class="nemo-box-badge">MODEL ARMOR ENGINE (MANAGED SERVICE)</div>
+                                    <div class="nemo-box-title">
+                                        <img src="assets/model-armor-logo.svg" alt="Model Armor" class="nemo-box-icon">
+                                        <span>Google Cloud Model Armor</span>
+                                    </div>
+                                    <div class="nemo-box-body">
+                                        <div class="nemo-step-pill">
+                                            <span class="nemo-step-num">1</span>
+                                            <div>
+                                                <strong>Inbound Template (<code>ma-ai-gw-inbound</code>)</strong>
+                                                <p>Prompt Injection, Jailbreak, RAI Safety &amp; Sensitive Data Protection</p>
+                                            </div>
+                                        </div>
+                                        <div class="nemo-step-pill">
+                                            <span class="nemo-step-num">2</span>
+                                            <div>
+                                                <strong>Outbound Template (<code>ma-ai-gw-outbound</code>)</strong>
+                                                <p>Sensitive Data Protection, RAI Safety &amp; Malicious URL scanning</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Vertical Connector between Model Armor and Apigee -->
+                                <div class="nemo-connector-v ma-connector-v">
+                                    <div class="nemo-v-line">
+                                        <span class="nemo-v-arrow ma-arrow">&uarr;</span>
+                                        <span class="nemo-v-text"><strong>Inbound &amp; Outbound Verification:</strong> Apigee native proxy authentication (SA)</span>
+                                    </div>
+                                    <div class="nemo-v-line">
+                                        <span class="nemo-v-arrow ma-arrow">&darr;</span>
+                                        <span class="nemo-v-text"><strong>Inspection Result:</strong> <code>FilterMatched</code> / violation details or Clean pass</span>
+                                    </div>
+                                </div>
+
+                                <!-- Bottom Box: Apigee API Gateway -->
+                                <div class="nemo-box nemo-box-apigee">
+                                    <div class="nemo-box-badge">API GATEWAY</div>
+                                    <div class="nemo-box-title">
+                                        <img src="assets/apigee-logo.svg" alt="Apigee" class="nemo-box-icon">
+                                        <span>Google Cloud Apigee</span>
+                                    </div>
+                                    <div class="nemo-box-body">
+                                        <div class="nemo-step-pill">
+                                            <span class="nemo-step-num">A</span>
+                                            <div>
+                                                <strong>ProxyEndpoint PreFlow: SanitizeUserPrompt</strong>
+                                                <p>Inspects incoming prompt before model inference; blocks with 400 on violation</p>
+                                            </div>
+                                        </div>
+                                        <div class="nemo-step-pill">
+                                            <span class="nemo-step-num">B</span>
+                                            <div>
+                                                <strong>TargetEndpoint EventFlow: SanitizeModelResponse</strong>
+                                                <p>Evaluates streaming SSE tokens window-by-window; cuts connection mid-stream if unsafe</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- Horizontal Connector: Apigee <-> Gemini -->
+                            <div class="nemo-connector-h">
+                                <div class="nemo-conn-line nemo-conn-out">
+                                    <span class="nemo-conn-text">Forward (if clean)</span>
+                                    <span class="nemo-conn-arrow">&rarr;</span>
+                                </div>
+                                <div class="nemo-conn-line nemo-conn-in">
+                                    <span class="nemo-conn-arrow">&larr;</span>
+                                    <span class="nemo-conn-text">Streaming Tokens</span>
+                                </div>
+                                <span class="nemo-conn-tag">TargetEndpoint</span>
+                            </div>
+
+                            <!-- Right: Target Model Gemini 3.5 Flash Lite -->
+                            <div class="nemo-box nemo-box-target">
+                                <div class="nemo-box-badge">TARGET BACKEND</div>
+                                <div class="nemo-box-title">
+                                    <img src="assets/gcp-logo.svg" alt="Gemini" class="nemo-box-icon">
+                                    <span>Gemini 3.5 Flash Lite</span>
+                                </div>
+                                <div class="nemo-box-body">
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>Vertex AI Foundation Model</strong>
+                                            <p>Executes streaming inference</p>
+                                        </div>
+                                    </div>
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>Target Response</strong>
+                                            <p>Streams tokens back through Apigee EventFlow</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Highlights Strip -->
+                        <div class="nemo-flow-footer">
+                            <div class="nemo-footer-item">
+                                <span class="nemo-footer-icon">🛡️</span>
+                                <span><strong>Dual-Phase Defense:</strong> SUP stops malicious prompts before Gemini; SMR guards against unsafe LLM outputs.</span>
+                            </div>
+                            <div class="nemo-footer-item">
+                                <span class="nemo-footer-icon">⚡</span>
+                                <span><strong>Streaming Protection:</strong> EventFlow inspects chunk-by-chunk with zero token leakage on hard blocks.</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="nemo-section">
+                    <div class="modal-section-title">Filters</div>
+                    <div class="nemo-rails-grid">
+                        <div class="nemo-rail nemo-rail-active"><span class="nemo-rail-name">Responsible AI safety</span><span class="nemo-rail-desc">Hate speech, harassment, sexually explicit, dangerous content; CSAM is always on.</span><span class="nemo-rail-used">Used in this demo</span></div>
+                        <div class="nemo-rail nemo-rail-active"><span class="nemo-rail-name">Prompt injection &amp; jailbreak</span><span class="nemo-rail-desc">Detects crafted inputs that try to override instructions or bypass safety protocols.</span><span class="nemo-rail-used">Used in this demo</span></div>
+                        <div class="nemo-rail nemo-rail-active"><span class="nemo-rail-name">Sensitive Data Protection</span><span class="nemo-rail-desc">Basic (card, SSN, keys, credentials…) or advanced SDP templates for inspection and de-identification.</span><span class="nemo-rail-used">Used in this demo</span></div>
+                        <div class="nemo-rail"><span class="nemo-rail-name">Malicious URL detection</span><span class="nemo-rail-desc">Scans up to the first 256 URLs in prompts and responses for phishing/malware.</span></div>
+                    </div>
+                </div>
+
+                <div class="nemo-section">
+                    <div class="modal-section-title">Templates, confidence &amp; enforcement</div>
+                    <ul class="nemo-list nemo-list-compact">
+                        <li><strong>Templates</strong> — sets of filters and thresholds; best practice is separate input and output templates.</li>
+                        <li><strong>Confidence levels</strong> — High (fewest false positives) · Medium and above (balanced) · Low and above (most sensitive).</li>
+                        <li><strong>Enforcement</strong> — <em>Inspect only</em> (log to Cloud Logging, don't block) or <em>Inspect and block</em>.</li>
+                    </ul>
+                </div>
+
+                <div class="nemo-section">
+                    <div class="modal-section-title">Use cases</div>
+                    <ul class="nemo-list nemo-list-compact">
+                        <li>Reduce leakage of sensitive IP and PII in prompts or responses.</li>
+                        <li>Protect against prompt injection and jailbreak attacks.</li>
+                        <li>Scan text in PDFs for sensitive or malicious content.</li>
+                        <li>Stop a chatbot recommending competitor solutions; filter harmful AI-generated posts.</li>
+                    </ul>
+                </div>
+
+                <div class="nemo-section nemo-demo-box ma-demo-box">
+                    <div class="modal-section-title">How this demo uses it</div>
+                    <ul class="nemo-list nemo-list-compact">
+                        <li><strong>Inbound:</strong> Apigee <code>SanitizeUserPrompt</code> in the ProxyEndpoint with template <code>ma-ai-gw-inbound</code> — blocked prompts never reach Gemini.</li>
+                        <li><strong>Outbound:</strong> <code>SanitizeModelResponse</code> in the streaming <code>EventFlow</code> with template <code>ma-ai-gw-outbound</code> — cuts the SSE stream mid-flight on a violation.</li>
+                        <li>No custom code: native Apigee policies, authenticated with the proxy's service account.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <div class="nemo-links">
+                    <a href="https://docs.cloud.google.com/model-armor/overview" target="_blank" rel="noopener noreferrer">Overview ↗</a>
+                    <a href="https://docs.cloud.google.com/apigee/docs/api-platform/tutorials/using-model-armor-policies" target="_blank" rel="noopener noreferrer">Apigee policies ↗</a>
+                </div>
+                <button type="button" class="btn-modal-close" id="btnMaModalCloseAction">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NVIDIA NEMO GUARDRAILS DETAILS MODAL (summary of github.com/NVIDIA-NeMo/Guardrails) -->
+    <div class="modal-overlay" id="nemoModalOverlay" style="display: none;">
+        <div class="modal-card nemo-modal-card" role="dialog" aria-modal="true" aria-labelledby="nemoModalTitle">
+            <div class="modal-header nemo-modal-header">
+                <div class="modal-title-group">
+                    <img src="assets/nvidia-logo.svg" alt="NVIDIA" class="nemo-modal-logo">
+                    <h3 id="nemoModalTitle">NVIDIA NeMo Guardrails</h3>
+                    <span class="nemo-modal-tag">Open source · Apache 2.0</span>
+                </div>
+                <button type="button" class="modal-close-btn" id="nemoModalCloseBtn" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body nemo-modal-body">
+                <p class="nemo-lead">An open-source toolkit for adding <strong>programmable guardrails</strong> ("rails") to LLM-based conversational applications. Rails sit between the application code and the LLM and control its output — e.g. not talking about politics, answering specific requests in a set way, following a predefined dialog path, using a particular language style, or extracting structured data.</p>
+
+                <div class="nemo-section">
+                    <div class="modal-section-title">Architecture — How Apigee Calls NeMo Guardrails</div>
+                    <div class="nemo-flow-card" role="img" aria-label="Architecture diagram showing Client calling Apigee, Apigee invoking NeMo on Cloud Run via ServiceCallout vertically, and Apigee routing to Gemini 3.5 Flash Lite">
+                        
+                        <div class="nemo-topo">
+                            
+                            <!-- Left: Client Application -->
+                            <div class="nemo-box nemo-box-client">
+                                <div class="nemo-box-badge">CLIENT LAYER</div>
+                                <div class="nemo-box-title">
+                                    <span class="nemo-box-icon-emoji">💻</span>
+                                    <span>Client Application</span>
+                                </div>
+                                <div class="nemo-box-body">
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>User Prompt Request</strong>
+                                            <p>Sends prompt via API request</p>
+                                        </div>
+                                    </div>
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>Headers Config</strong>
+                                            <p><code>x-nemo-guardrails</code><br><code>x-nemo-profile</code></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Horizontal Connector: Client <-> Apigee -->
+                            <div class="nemo-connector-h">
+                                <div class="nemo-conn-line nemo-conn-out">
+                                    <span class="nemo-conn-text">POST /guardrail-proxy</span>
+                                    <span class="nemo-conn-arrow">&rarr;</span>
+                                </div>
+                                <div class="nemo-conn-line nemo-conn-in">
+                                    <span class="nemo-conn-arrow">&larr;</span>
+                                    <span class="nemo-conn-text">SSE Stream / 400 Refusal</span>
+                                </div>
+                                <span class="nemo-conn-tag">HTTPS &bull; API Key</span>
+                            </div>
+
+                            <!-- Middle Column: NeMo (Top) & Apigee (Bottom) -->
+                            <div class="nemo-mid-col">
+                                
+                                <!-- Top Box: NeMo Guardrail Engine on Cloud Run -->
+                                <div class="nemo-box nemo-box-cloudrun">
+                                    <div class="nemo-box-badge">GUARDRAIL ENGINE (CLOUD RUN)</div>
+                                    <div class="nemo-box-title">
+                                        <img src="assets/nvidia-logo.svg" alt="NVIDIA" class="nemo-box-icon">
+                                        <span>NVIDIA NeMo Guardrails</span>
+                                    </div>
+                                    <div class="nemo-box-body">
+                                        <div class="nemo-step-pill">
+                                            <span class="nemo-step-num">1</span>
+                                            <div>
+                                                <strong>Input Rail Verification</strong>
+                                                <p>Evaluates Jailbreak, Safety, or Topic Policy</p>
+                                            </div>
+                                        </div>
+                                        <div class="nemo-step-pill">
+                                            <span class="nemo-step-num">2</span>
+                                            <div>
+                                                <strong>LLM-as-a-Judge Validation</strong>
+                                                <p>Self-check input inference via Vertex AI</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Vertical Connector between NeMo and Apigee -->
+                                <div class="nemo-connector-v">
+                                    <div class="nemo-v-line">
+                                        <span class="nemo-v-arrow">&uarr;</span>
+                                        <span class="nemo-v-text"><strong>ServiceCallout:</strong> POST /v1/chat/completions (Google ID Token)</span>
+                                    </div>
+                                    <div class="nemo-v-line">
+                                        <span class="nemo-v-arrow">&darr;</span>
+                                        <span class="nemo-v-text"><strong>Rail Verdict:</strong> <code>stop</code> (violation) or <code>allow</code> (passed)</span>
+                                    </div>
+                                </div>
+
+                                <!-- Bottom Box: Apigee API Gateway -->
+                                <div class="nemo-box nemo-box-apigee">
+                                    <div class="nemo-box-badge">API GATEWAY</div>
+                                    <div class="nemo-box-title">
+                                        <img src="assets/apigee-logo.svg" alt="Apigee" class="nemo-box-icon">
+                                        <span>Google Cloud Apigee</span>
+                                    </div>
+                                    <div class="nemo-box-body">
+                                        <div class="nemo-step-pill">
+                                            <span class="nemo-step-num">A</span>
+                                            <div>
+                                                <strong>ProxyEndpoint PreFlow: ServiceCallout</strong>
+                                                <p>Pauses pipeline &amp; invokes NeMo via authenticated ServiceCallout</p>
+                                            </div>
+                                        </div>
+                                        <div class="nemo-step-pill">
+                                            <span class="nemo-step-num">B</span>
+                                            <div>
+                                                <strong>Evaluate Decision &amp; Enforce</strong>
+                                                <p>If <code>stop</code> &rarr; RaiseFault 400 Refusal (blocks call before target)</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- Horizontal Connector: Apigee <-> Gemini -->
+                            <div class="nemo-connector-h">
+                                <div class="nemo-conn-line nemo-conn-out">
+                                    <span class="nemo-conn-text">Forward Request (if allowed)</span>
+                                    <span class="nemo-conn-arrow">&rarr;</span>
+                                </div>
+                                <div class="nemo-conn-line nemo-conn-in">
+                                    <span class="nemo-conn-arrow">&larr;</span>
+                                    <span class="nemo-conn-text">SSE Token Stream</span>
+                                </div>
+                                <span class="nemo-conn-tag">TargetEndpoint</span>
+                            </div>
+
+                            <!-- Right: Target Model Gemini 3.5 Flash Lite -->
+                            <div class="nemo-box nemo-box-target">
+                                <div class="nemo-box-badge">TARGET BACKEND</div>
+                                <div class="nemo-box-title">
+                                    <img src="assets/gcp-logo.svg" alt="Gemini" class="nemo-box-icon">
+                                    <span>Gemini 3.5 Flash Lite</span>
+                                </div>
+                                <div class="nemo-box-body">
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>Vertex AI Foundation Model</strong>
+                                            <p>Executes streaming inference</p>
+                                        </div>
+                                    </div>
+                                    <div class="nemo-step-pill">
+                                        <span class="nemo-step-num">&bull;</span>
+                                        <div>
+                                            <strong>Target Response</strong>
+                                            <p>Streams tokens back through Apigee EventFlow</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Highlights Strip -->
+                        <div class="nemo-flow-footer">
+                            <div class="nemo-footer-item">
+                                <span class="nemo-footer-icon">🛡️</span>
+                                <span><strong>Fail-Open:</strong> Timeout or connection error defaults to pass (prevents cold-start bottlenecks).</span>
+                            </div>
+                            <div class="nemo-footer-item">
+                                <span class="nemo-footer-icon">👁️</span>
+                                <span><strong>Monitor Mode:</strong> Audits decisions into Cloud Logging without blocking consumer traffic.</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="nemo-section">
+                    <div class="modal-section-title">Key benefits</div>
+                    <ul class="nemo-list">
+                        <li><strong>Trustworthy, safe &amp; secure apps</strong> — define rails that guide and safeguard conversations and keep the app away from unwanted topics.</li>
+                        <li><strong>Secure connections</strong> — connect the LLM to models, chains, tools and other services safely.</li>
+                        <li><strong>Controllable dialog</strong> — steer the LLM along pre-defined conversational paths and enforce standard operating procedures (e.g. authentication, support).</li>
+                        <li><strong>LLM vulnerability protection</strong> — mechanisms against common attacks such as jailbreaks and prompt injections.</li>
+                    </ul>
+                </div>
+
+                <div class="nemo-section">
+                    <div class="modal-section-title">Five types of rails</div>
+                    <div class="nemo-rails-grid">
+                        <div class="nemo-rail nemo-rail-active"><span class="nemo-rail-name">Input rails</span><span class="nemo-rail-desc">Applied to user input — can reject it or alter it (mask sensitive data, rephrase).</span><span class="nemo-rail-used">Used in this demo</span></div>
+                        <div class="nemo-rail"><span class="nemo-rail-name">Dialog rails</span><span class="nemo-rail-desc">Shape how the LLM is prompted and whether an action runs or a predefined response is used.</span></div>
+                        <div class="nemo-rail"><span class="nemo-rail-name">Retrieval rails</span><span class="nemo-rail-desc">Applied to retrieved chunks in RAG — can reject or alter them.</span></div>
+                        <div class="nemo-rail"><span class="nemo-rail-name">Execution rails</span><span class="nemo-rail-desc">Applied to the inputs and outputs of custom actions (tools) the LLM calls.</span></div>
+                        <div class="nemo-rail"><span class="nemo-rail-name">Output rails</span><span class="nemo-rail-desc">Applied to LLM output — can reject it or alter it (e.g. remove sensitive data).</span></div>
+                    </div>
+                </div>
+
+                <div class="nemo-section">
+                    <div class="modal-section-title">Typical use cases</div>
+                    <ul class="nemo-list nemo-list-compact">
+                        <li><strong>Question answering / RAG</strong> — fact-checking and output moderation.</li>
+                        <li><strong>Domain-specific assistants</strong> — stay on topic and follow designed flows.</li>
+                        <li><strong>LLM endpoints</strong> — add guardrails in front of a custom LLM.</li>
+                        <li><strong>LangChain chains</strong> — wrap chains with a guardrails layer.</li>
+                    </ul>
+                </div>
+
+                <div class="nemo-section nemo-demo-box">
+                    <div class="modal-section-title">How this demo uses it</div>
+                    <ul class="nemo-list nemo-list-compact">
+                        <li>Guardrails server on <strong>Cloud Run</strong>, called from the Apigee ProxyEndpoint via <code>ServiceCallout</code> with a Google ID token.</li>
+                        <li><strong>Inbound only</strong> — input rails <code>jailbreak_self_check</code>, <code>content_safety</code>, <code>topic_control</code> (one LLM-as-judge call each).</li>
+                        <li>Outbound streaming is covered by Static Guardrails + Model Armor SMR, since ServiceCallout can't run in the EventFlow.</li>
+                        <li>Fails open on timeout/error so a cold start never blocks traffic.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <div class="nemo-links">
+                    <a href="https://github.com/NVIDIA-NeMo/Guardrails" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+                    <a href="https://docs.nvidia.com/nemo/guardrails" target="_blank" rel="noopener noreferrer">Docs ↗</a>
+                    <a href="https://arxiv.org/abs/2310.10501" target="_blank" rel="noopener noreferrer">Paper (arXiv) ↗</a>
+                </div>
+                <button type="button" class="btn-modal-close" id="btnNemoModalCloseAction">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GUARDRAIL COMPARISON & SELECTION GUIDE MODAL -->
+    <div class="modal-overlay" id="compareModalOverlay" style="display: none;">
+        <div class="modal-card nemo-modal-card compare-modal-card" role="dialog" aria-modal="true" aria-labelledby="compareModalTitle">
+            <div class="modal-header nemo-modal-header" style="--gr-accent: #2563eb;">
+                <div class="modal-title-group">
+                    <span style="font-size: 20px;">⚖️</span>
+                    <h3 id="compareModalTitle">Guardrail Comparison &amp; Selection Guide</h3>
+                    <span class="nemo-modal-tag">When to choose what &bull; Architectural Decision Matrix</span>
+                </div>
+                <button type="button" class="modal-close-btn" id="compareModalCloseBtn" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body nemo-modal-body">
+                <!-- View toggle: Simple (default) / Detailed -->
+                <div class="compare-view-toggle" role="tablist" aria-label="Comparison detail level">
+                    <button type="button" class="cvt-btn active" data-compare-view="simple" role="tab" aria-selected="true">Simple</button>
+                    <button type="button" class="cvt-btn" data-compare-view="detailed" role="tab" aria-selected="false">Detailed</button>
+                </div>
+
+                <!-- ===== SIMPLE VIEW ===== -->
+                <div class="compare-view" data-view="simple">
+                    <div class="cs-pick-grid">
+                        <div class="cs-pick cs-static">
+                            <img src="assets/apigee-logo.svg" alt="Apigee">
+                            <div>
+                                <h4>Static Guardrails</h4>
+                                <p>Block <strong>known patterns</strong> fast &amp; free</p>
+                            </div>
+                        </div>
+                        <div class="cs-pick cs-ma">
+                            <img src="assets/model-armor-logo.svg" alt="Model Armor">
+                            <div>
+                                <h4>Model Armor</h4>
+                                <p>Catch <strong>jailbreaks, toxicity &amp; PII</strong>, fully managed</p>
+                            </div>
+                        </div>
+                        <div class="cs-pick cs-nemo">
+                            <img src="assets/nvidia-logo.svg" alt="NVIDIA">
+                            <div>
+                                <h4>NeMo Guardrails</h4>
+                                <p>Keep the bot <strong>on-topic</strong> with custom policies</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="compare-table-wrapper">
+                        <table class="compare-table cs-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 19%;"></th>
+                                    <th class="th-static"><div class="th-content"><img src="assets/apigee-logo.svg" alt=""><span>Static</span></div></th>
+                                    <th class="th-ma"><div class="th-content"><img src="assets/model-armor-logo.svg" alt=""><span>Model Armor</span></div></th>
+                                    <th class="th-nemo"><div class="th-content"><img src="assets/nvidia-logo.svg" alt=""><span>NeMo</span></div></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="dim-name"><strong>Runs in</strong></td>
+                                    <td>Apigee (JavaScript)</td>
+                                    <td>Google-managed API</td>
+                                    <td>Cloud Run (ServiceCallout)</td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name"><strong>Speed</strong></td>
+                                    <td><span class="cs-good">⚡ ~80 ms</span></td>
+                                    <td>~300 ms</td>
+                                    <td><span class="cs-warn">~1 s</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name"><strong>Cost</strong></td>
+                                    <td><span class="cs-good">Free</span></td>
+                                    <td>Pay per scan</td>
+                                    <td>Cloud Run + LLM tokens</td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name"><strong>Best at</strong></td>
+                                    <td>SQLi, secrets, card numbers, profanity</td>
+                                    <td>Jailbreaks, injection, toxicity, DLP</td>
+                                    <td>Topic &amp; business-policy control</td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name"><strong>Hard to bypass?</strong></td>
+                                    <td><span class="cs-dots">●<i>●●</i></span> Low</td>
+                                    <td><span class="cs-dots">●●<i>●</i></span> High</td>
+                                    <td><span class="cs-dots">●●●</span> Very high</td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name"><strong>Streaming</strong></td>
+                                    <td>In + Out</td>
+                                    <td>In + Out</td>
+                                    <td>Inbound only</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="cs-tip">🎯 <strong>Best practice:</strong> layer all three: <span class="cs-chain">Static</span> → <span class="cs-chain">Model Armor</span> → <span class="cs-chain">NeMo</span>. Cheapest checks first.</div>
+                </div>
+
+                <!-- ===== DETAILED VIEW ===== -->
+                <div class="compare-view" data-view="detailed" hidden>
+                <p class="nemo-lead">Each of the three guardrail layers addresses AI safety, threat prevention, and compliance at different latency, cost, and intelligence boundaries. Use this guide to choose the optimal layer for your requirements or combine them into a <strong>defense-in-depth pipeline</strong>.</p>
+
+                <!-- Actionable Decision Cards: When to Choose What -->
+                <div class="compare-cards-grid">
+                    <div class="compare-choice-card choice-static">
+                        <div class="choice-card-header">
+                            <img src="assets/apigee-logo.svg" alt="Apigee" class="choice-card-logo">
+                            <div>
+                                <span class="choice-badge">Fastest · $0 Cost</span>
+                                <h4>Static Guardrails (in Apigee)</h4>
+                            </div>
+                        </div>
+                        <div class="choice-card-body">
+                            <p class="choice-when"><strong>Choose when you need:</strong></p>
+                            <ul>
+                                <li>Sub-100 ms (~80 ms) gateway-native threat prevention with <strong>zero external network hops</strong>.</li>
+                                <li>Stopping deterministic attacks: SQLi/XSS, known secrets (AWS keys, GCP tokens), card numbers (Luhn check), and rigid profanity lexicons.</li>
+                                <li>In-flight streaming redaction (<code>[REDACTED]</code>) directly at the API gateway.</li>
+                                <li><strong>$0 marginal cost:</strong> save LLM and API tokens on known attacks.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="compare-choice-card choice-ma">
+                        <div class="choice-card-header">
+                            <img src="assets/model-armor-logo.svg" alt="Model Armor" class="choice-card-logo">
+                            <div>
+                                <span class="choice-badge">Managed · Enterprise RAI</span>
+                                <h4>Google Cloud Model Armor</h4>
+                            </div>
+                        </div>
+                        <div class="choice-card-body">
+                            <p class="choice-when"><strong>Choose when you need:</strong></p>
+                            <ul>
+                                <li>Turnkey, managed Google Cloud AI security <strong>without hosting or maintaining guardrail infrastructure</strong>.</li>
+                                <li>Protection against adversarial jailbreaks (DAN), prompt injection, and multilingual toxicity (ZH, JA, VI, TH).</li>
+                                <li>Sensitive Data Protection (SDP/DLP templates) and malicious URL inspection.</li>
+                                <li>Dual-phase screening: inbound prompts (<code>SUP</code>) and streaming tokens (<code>SMR</code> via Apigee EventFlow).</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="compare-choice-card choice-nemo">
+                        <div class="choice-card-header">
+                            <img src="assets/nvidia-logo.svg" alt="NVIDIA" class="choice-card-logo">
+                            <div>
+                                <span class="choice-badge">LLM-as-a-Judge · Topic Steerage</span>
+                                <h4>NVIDIA NeMo Guardrails</h4>
+                            </div>
+                        </div>
+                        <div class="choice-card-body">
+                            <p class="choice-when"><strong>Choose when you need:</strong></p>
+                            <ul>
+                                <li><strong>Domain &amp; topic boundaries:</strong> steering the model away from off-topic subjects (e.g. "Do not give cryptocurrency financial advice").</li>
+                                <li>Programmable conversational policies, multi-turn dialogue management, and Colang flows.</li>
+                                <li>Custom LLM-as-a-judge semantic evaluation where rigid regex or static classifiers are insufficient.</li>
+                                <li>When ~1-1.5s latency is acceptable for critical business compliance.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabular Comparison -->
+                <div class="nemo-section">
+                    <div class="modal-section-title">Comprehensive Comparison Across Key Dimensions</div>
+                    <div class="compare-table-wrapper">
+                        <table class="compare-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 20%;">Dimension</th>
+                                    <th style="width: 26%;" class="th-static">
+                                        <div class="th-content">
+                                            <img src="assets/apigee-logo.svg" alt="Apigee">
+                                            <span>Static Guardrails</span>
+                                        </div>
+                                    </th>
+                                    <th style="width: 27%;" class="th-ma">
+                                        <div class="th-content">
+                                            <img src="assets/model-armor-logo.svg" alt="Model Armor">
+                                            <span>Google Cloud Model Armor</span>
+                                        </div>
+                                    </th>
+                                    <th style="width: 27%;" class="th-nemo">
+                                        <div class="th-content">
+                                            <img src="assets/nvidia-logo.svg" alt="NVIDIA">
+                                            <span>NVIDIA NeMo Guardrails</span>
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="dim-name">
+                                        <strong>Execution Model</strong>
+                                        <small>Where and how it runs</small>
+                                    </td>
+                                    <td>
+                                        <span class="table-chip chip-static">In-Process Runtime</span>
+                                        <p>Runs 100% inside Apigee JVM/Rhino JavaScript engine. Zero network hops.</p>
+                                    </td>
+                                    <td>
+                                        <span class="table-chip chip-ma">Managed Cloud Service</span>
+                                        <p>Google Cloud managed API called natively via Apigee service credentials.</p>
+                                    </td>
+                                    <td>
+                                        <span class="table-chip chip-nemo">External Container</span>
+                                        <p>Containerized service hosted on Cloud Run, invoked via Apigee ServiceCallout.</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name">
+                                        <strong>Latency Overhead (TTFT)</strong>
+                                        <small>Added time to first token</small>
+                                    </td>
+                                    <td>
+                                        <strong class="highlight-good">~80 ms</strong>
+                                        <p>In-memory string operations and regex matching; virtually imperceptible.</p>
+                                    </td>
+                                    <td>
+                                        <strong>~300 – 450 ms</strong>
+                                        <p>Fast managed HTTP roundtrip to Google Cloud Model Armor endpoint.</p>
+                                    </td>
+                                    <td>
+                                        <strong>~800 – 1500 ms</strong>
+                                        <p>Secondary LLM generation and self-check roundtrips per active rail.</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name">
+                                        <strong>Cost &amp; Pricing</strong>
+                                        <small>Operational expense</small>
+                                    </td>
+                                    <td>
+                                        <strong class="highlight-good">$0 marginal cost</strong>
+                                        <p>Included in standard Apigee gateway API calls. Saves tokens downstream.</p>
+                                    </td>
+                                    <td>
+                                        <strong>Low API usage fee</strong>
+                                        <p>Pay-per-request pricing based on inspected character/token count.</p>
+                                    </td>
+                                    <td>
+                                        <strong>Cloud Run + Model Tokens</strong>
+                                        <p>Cloud Run compute plus token cost for every guardrail LLM inference call.</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name">
+                                        <strong>Core Strengths</strong>
+                                        <small>What it detects best</small>
+                                    </td>
+                                    <td>
+                                        <ul>
+                                            <li>Known injection signatures</li>
+                                            <li>Hardcoded credentials (AWS, GCP keys)</li>
+                                            <li>Card numbers (Luhn checksum) &amp; PII</li>
+                                            <li>Explicit profanity &amp; death-wish lexicons</li>
+                                            <li>Oversized / malformed JSON payloads</li>
+                                        </ul>
+                                    </td>
+                                    <td>
+                                        <ul>
+                                            <li>Jailbreaks (DAN, roleplay exploits)</li>
+                                            <li>Prompt injection attacks</li>
+                                            <li>Multilingual toxicity (ZH, JA, VI, TH)</li>
+                                            <li>Sensitive Data Protection (SDP/DLP)</li>
+                                            <li>Phishing &amp; malicious URLs</li>
+                                        </ul>
+                                    </td>
+                                    <td>
+                                        <ul>
+                                            <li>Conversational topic boundaries</li>
+                                            <li>Domain-specific policy adherence</li>
+                                            <li>Fact-checking &amp; hallucination rails</li>
+                                            <li>Multi-turn dialogue state tracking</li>
+                                            <li>Complex LLM-as-a-judge guidelines</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name">
+                                        <strong>Evasion Resistance</strong>
+                                        <small>Resistance to paraphrasing</small>
+                                    </td>
+                                    <td>
+                                        <span class="table-tag tag-low">Low</span>
+                                        <p>Can be bypassed by semantic paraphrasing or unfamiliar cipher/leetspeak variants.</p>
+                                    </td>
+                                    <td>
+                                        <span class="table-tag tag-high">High</span>
+                                        <p>ML-based classifiers evaluate semantic context and adversarial intent.</p>
+                                    </td>
+                                    <td>
+                                        <span class="table-tag tag-vhigh">Very High</span>
+                                        <p>Understands nuanced intent, context shifts, and semantic conversational subtleties.</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name">
+                                        <strong>Streaming (SSE) Support</strong>
+                                        <small>Handling live response tokens</small>
+                                    </td>
+                                    <td>
+                                        <strong>Inbound + Outbound</strong>
+                                        <p>64-character holdback window with real-time in-flight token redaction (<code>[REDACTED]</code>).</p>
+                                    </td>
+                                    <td>
+                                        <strong>Inbound + Outbound</strong>
+                                        <p>SUP on request; SMR evaluates sliding windows in EventFlow, cutting stream if unsafe.</p>
+                                    </td>
+                                    <td>
+                                        <strong>Inbound PreFlow</strong>
+                                        <p>Inspects initial prompt before forwarding; typically non-streaming for output rails.</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name">
+                                        <strong>Rule Customization</strong>
+                                        <small>How rules are defined &amp; tuned</small>
+                                    </td>
+                                    <td>
+                                        <p><strong>Apigee Property Sets &amp; KVM:</strong> Regex patterns, word lists, and mode switches tuned without proxy redeployment.</p>
+                                    </td>
+                                    <td>
+                                        <p><strong>Google Cloud Templates:</strong> Centralized security templates with configurable filters and confidence thresholds.</p>
+                                    </td>
+                                    <td>
+                                        <p><strong>Colang &amp; YAML Configs:</strong> Declarative dialogue flows, guardrail action definitions, and system prompts.</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="dim-name">
+                                        <strong>False Positive Risk</strong>
+                                        <small>Likelihood of blocking safe input</small>
+                                    </td>
+                                    <td>
+                                        <p><strong>Very Low</strong> for specific signatures/PII; <strong>Moderate</strong> if keyword deny-lists are too generic.</p>
+                                    </td>
+                                    <td>
+                                        <p><strong>Low:</strong> Calibrated confidence levels (High / Medium / Low) allow fine-tuning safety vs usability.</p>
+                                    </td>
+                                    <td>
+                                        <p><strong>Moderate:</strong> Depends on judge LLM prompts; can occasionally misjudge ambiguous benign prompts.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Best Practice Architecture Callout -->
+                <div class="compare-best-practice">
+                    <div class="bp-icon">🎯</div>
+                    <div class="bp-content">
+                        <h5>Recommended Pattern: Multi-Layered Defense-in-Depth</h5>
+                        <p>In enterprise architectures, these layers are not mutually exclusive—they work best when combined sequentially:</p>
+                        <ol>
+                            <li><strong>Layer 1 (Static Guardrails):</strong> Immediately eliminates 75–85% of automated attacks, credential leaks, and oversized payloads in ~80 ms at $0 cost.</li>
+                            <li><strong>Layer 2 (Model Armor):</strong> Evaluates remaining clean prompts for adversarial jailbreaks, prompt injection, and multilingual safety in ~300 ms before LLM inference.</li>
+                            <li><strong>Layer 3 (NeMo Guardrails):</strong> Enforces strict business topic compliance and conversation integrity for high-stakes enterprise use cases.</li>
+                        </ol>
+                    </div>
+                </div>
+                </div>
+                <!-- ===== /DETAILED VIEW ===== -->
+
+            </div>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <div class="nemo-links">
+                    <a href="https://docs.cloud.google.com/apigee/docs/api-platform/fundamentals/shared-flows" target="_blank" rel="noopener noreferrer">Apigee SharedFlows ↗</a>
+                    <a href="https://docs.cloud.google.com/model-armor/overview" target="_blank" rel="noopener noreferrer">Google Cloud Model Armor ↗</a>
+                    <a href="https://github.com/NVIDIA-NeMo/Guardrails" target="_blank" rel="noopener noreferrer">NVIDIA NeMo Guardrails ↗</a>
+                </div>
+                <button type="button" class="btn-modal-close" id="btnCompareModalCloseAction">Close</button>
             </div>
         </div>
     </div>
 
     <!-- Client Script -->
     <script src="app.js"></script>
+    <script type="module" src="tour/tour-engine.js"></script>
 </body>
 </html>
