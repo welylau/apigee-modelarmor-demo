@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RaiseFault continueOnError="false" enabled="true" name="RF-Bad-Request">
+    <DisplayName>400 Unsupported Request</DisplayName>
+    <FaultResponse>
+        <Set>
+            <Headers>
+                <Header name="X-Request-Id">{messageid}</Header>
+            </Headers>
+            <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"code":400,"status":"INVALID_ARGUMENT","message":"@armor.reject_reason#","requestId":"@messageid#"}}</Payload>
+            <StatusCode>400</StatusCode>
+            <ReasonPhrase>Bad Request</ReasonPhrase>
+        </Set>
+    </FaultResponse>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</RaiseFault>

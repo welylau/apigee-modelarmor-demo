@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<MessageLogging continueOnError="true" enabled="true" name="ML-Log-Audit">
+    <DisplayName>Log Audit Event to Cloud Logging</DisplayName>
+    <!-- Read by the web UI (/api/admin/refresh). Metadata only: no prompt or response text.
+         Runtime SA needs roles/logging.logWriter. -->
+    <CloudLogging>
+        <LogName>projects/{organization.name}/logs/apigee-model-armor-101-logs</LogName>
+        <Message contentType="application/json">{"proxy":"{apiproxy.name}","app":"{escapeJSON(developer.app.name)}","scenarioId":"{escapeJSON(request.header.x-demo-scenario)}","httpStatus":"{response.status.code}","fault":"{escapeJSON(fault.name)}","armorMode":"{armor.mode}","armorInput":"{armor.input}","armorVerdict":"{armor.verdict}","armorFilters":"{escapeJSON(armor.matched)}","armorLatencyMs":"{armor.latency_ms}","requestId":"{messageid}"}</Message>
+        <Labels>
+            <Label>
+                <Key>proxy</Key>
+                <Value>{apiproxy.name}</Value>
+            </Label>
+            <Label>
+                <Key>environment</Key>
+                <Value>{environment.name}</Value>
+            </Label>
+        </Labels>
+        <ResourceType>api</ResourceType>
+    </CloudLogging>
+</MessageLogging>

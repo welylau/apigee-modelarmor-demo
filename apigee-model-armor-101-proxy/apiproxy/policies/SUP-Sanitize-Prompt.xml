@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<SanitizeUserPrompt continueOnError="false" enabled="true" name="SUP-Sanitize-Prompt">
+    <DisplayName>Model Armor: Sanitize User Prompt (native)</DisplayName>
+    <!-- Fail closed: an unresolved template/prompt raises a fault instead of skipping inspection. -->
+    <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+    <ModelArmor>
+        <TemplateName>projects/{propertyset.demo.armor_project}/locations/{propertyset.demo.armor_location}/templates/{propertyset.demo.armor_template}</TemplateName>
+    </ModelArmor>
+    <UserPromptSource>{private.armor.prompt}</UserPromptSource>
+</SanitizeUserPrompt>

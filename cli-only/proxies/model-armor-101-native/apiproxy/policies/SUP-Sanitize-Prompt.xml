@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<SanitizeUserPrompt continueOnError="false" enabled="true" name="SUP-Sanitize-Prompt">
+    <DisplayName>Model Armor: Sanitize User Prompt</DisplayName>
+    <!-- A filter match raises FilterMatched (400) -> FaultRule "armor-blocked". -->
+    <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+    <ModelArmor>
+        <TemplateName>projects/{propertyset.demo.armor_project}/locations/{propertyset.demo.armor_location}/templates/{propertyset.demo.armor_template}</TemplateName>
+    </ModelArmor>
+    <UserPromptSource>{jsonPath('$.contents[-1].parts[-1].text',request.content)}</UserPromptSource>
+</SanitizeUserPrompt>

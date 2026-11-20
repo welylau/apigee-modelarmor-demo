@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+audit_logs.json
+__pycache__/
+*.pyc
+.DS_Store
+.git
+.venv
+*.log
+run-local.sh
+deploy-cloudrun.sh

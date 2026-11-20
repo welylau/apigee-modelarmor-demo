@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RaiseFault continueOnError="false" enabled="true" name="RF-Armor-Incomplete">
+    <DisplayName>503 Model Armor Result Incomplete</DisplayName>
+    <!-- A required filter was skipped or the result was partial/unreadable: fail closed. -->
+    <FaultResponse>
+        <Set>
+            <Headers>
+                <Header name="X-Request-Id">{messageid}</Header>
+                <Header name="X-Armor-Verdict">incomplete</Header>
+            </Headers>
+            <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"code":503,"status":"ARMOR_INCOMPLETE","message":"Model Armor did not finish every check, so the request was not forwarded (fail closed).","requestId":"@messageid#"}}</Payload>
+            <StatusCode>503</StatusCode>
+            <ReasonPhrase>Service Unavailable</ReasonPhrase>
+        </Set>
+    </FaultResponse>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</RaiseFault>

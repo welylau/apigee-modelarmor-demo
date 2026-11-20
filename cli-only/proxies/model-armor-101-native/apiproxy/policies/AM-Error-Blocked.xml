@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="true" enabled="true" name="AM-Error-Blocked">
+    <DisplayName>400 Blocked by Model Armor</DisplayName>
+    <!-- Per-filter match states come from the policy's documented flow variables. -->
+    <Set>
+        <Headers>
+            <Header name="Content-Type">application/json</Header>
+            <Header name="X-Armor-Proxy">model-armor-101-native</Header>
+            <Header name="X-Armor-Verdict">blocked</Header>
+        </Headers>
+        <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"code":400,"status":"BLOCKED_BY_MODEL_ARMOR","message":"Prompt blocked by Model Armor (SanitizeUserPrompt policy) before it reached Gemini.","proxy":"model-armor-101-native","matchStates":{"rai":"@SanitizeUserPrompt.SUP-Sanitize-Prompt.raiFilterResult.matchState#","pi_and_jailbreak":"@SanitizeUserPrompt.SUP-Sanitize-Prompt.piAndJailbreakFilterResult.matchState#","malicious_uris":"@SanitizeUserPrompt.SUP-Sanitize-Prompt.maliciousUriFilterResult.matchState#","sdp":"@SanitizeUserPrompt.SUP-Sanitize-Prompt.sdpFilterResult.inspectResult.matchState#"},"requestId":"@messageid#"}}</Payload>
+        <StatusCode>400</StatusCode>
+        <ReasonPhrase>Bad Request</ReasonPhrase>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="response"/>
+</AssignMessage>

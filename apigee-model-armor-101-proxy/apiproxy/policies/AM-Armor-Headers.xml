@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="true" enabled="true" name="AM-Armor-Headers">
+    <DisplayName>Add Model Armor Telemetry Headers</DisplayName>
+    <Set>
+        <Headers>
+            <Header name="X-Request-Id">{messageid}</Header>
+            <Header name="X-Armor-Mode">{armor.mode}</Header>
+            <Header name="X-Armor-Input">{armor.input}</Header>
+            <Header name="X-Armor-Verdict">{armor.verdict}</Header>
+            <Header name="X-Armor-Filters">{armor.matched}</Header>
+            <Header name="X-Armor-Latency-Ms">{armor.latency_ms}</Header>
+        </Headers>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="response"/>
+</AssignMessage>

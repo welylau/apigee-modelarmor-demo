@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="true" enabled="true" name="AM-Error-Unavailable">
+    <DisplayName>503 Model Armor Unavailable (fail closed)</DisplayName>
+    <Set>
+        <Headers>
+            <Header name="Content-Type">application/json</Header>
+            <Header name="X-Armor-Proxy">model-armor-101-native</Header>
+            <Header name="X-Armor-Verdict">incomplete</Header>
+        </Headers>
+        <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"code":503,"status":"ARMOR_UNAVAILABLE","message":"Model Armor could not inspect the prompt, so it was not forwarded (fail closed).","proxy":"model-armor-101-native","requestId":"@messageid#"}}</Payload>
+        <StatusCode>503</StatusCode>
+        <ReasonPhrase>Service Unavailable</ReasonPhrase>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="response"/>
+</AssignMessage>

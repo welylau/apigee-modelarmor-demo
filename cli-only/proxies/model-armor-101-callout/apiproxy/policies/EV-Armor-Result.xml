@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ExtractVariables continueOnError="false" enabled="true" name="EV-Armor-Result">
+    <DisplayName>Read the Model Armor Verdict</DisplayName>
+    <Source clearPayload="false">armorResponse</Source>
+    <JSONPayload>
+        <Variable name="match_state" type="string"><JSONPath>$.sanitizationResult.filterMatchState</JSONPath></Variable>
+        <Variable name="invocation" type="string"><JSONPath>$.sanitizationResult.invocationResult</JSONPath></Variable>
+        <Variable name="rai" type="string"><JSONPath>$.sanitizationResult.filterResults.rai.raiFilterResult.matchState</JSONPath></Variable>
+        <Variable name="pi_and_jailbreak" type="string"><JSONPath>$.sanitizationResult.filterResults.pi_and_jailbreak.piAndJailbreakFilterResult.matchState</JSONPath></Variable>
+        <Variable name="malicious_uris" type="string"><JSONPath>$.sanitizationResult.filterResults.malicious_uris.maliciousUriFilterResult.matchState</JSONPath></Variable>
+        <Variable name="sdp" type="string"><JSONPath>$.sanitizationResult.filterResults.sdp.sdpFilterResult.inspectResult.matchState</JSONPath></Variable>
+    </JSONPayload>
+    <VariablePrefix>armor</VariablePrefix>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</ExtractVariables>

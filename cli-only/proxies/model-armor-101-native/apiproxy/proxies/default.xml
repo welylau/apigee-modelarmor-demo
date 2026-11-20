@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ProxyEndpoint name="default">
+    <PreFlow name="PreFlow">
+        <Request>
+            <Step>
+                <Name>VA-Verify-API-Key</Name>
+            </Step>
+        </Request>
+        <Response/>
+    </PreFlow>
+    <Flows>
+        <Flow name="generate">
+            <Condition>(proxy.pathsuffix MatchesPath "/generate") and (request.verb = "POST")</Condition>
+            <Request>
+                <!-- 1. Model Armor, natively: one policy calls sanitizeUserPrompt on the template -->
+                <Step>
+                    <Name>SUP-Sanitize-Prompt</Name>
+                </Step>
+                <!-- 2. Fail closed if any filter was skipped or failed -->
+                <Step>
+                    <Name>RF-Armor-Incomplete</Name>
+                    <Condition>SanitizeUserPrompt.SUP-Sanitize-Prompt.invocationResult != "SUCCESS"</Condition>
+                </Step>
+                <!-- 3. Clean prompt: forward to Gemini -->
+                <Step>
+                    <Name>AM-Prepare-Gemini-Request</Name>
+                </Step>
+            </Request>
+            <Response>
+                <Step>
+                    <Name>SMR-Sanitize-Response</Name>
+                    <Condition>response.status.code = 200</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-Armor-Headers</Name>
+                </Step>
+            </Response>
+        </Flow>
+        <Flow name="not-found">
+            <Request>
+                <Step>
+                    <Name>RF-Not-Found</Name>
+                </Step>
+            </Request>
+        </Flow>
+    </Flows>
+    <HTTPProxyConnection>
+        <BasePath>/model-armor-101-native</BasePath>
+    </HTTPProxyConnection>
+    <RouteRule name="default">
+        <TargetEndpoint>default</TargetEndpoint>
+    </RouteRule>
+    <!-- Mutually exclusive conditions -->
+    <FaultRules>
+        <FaultRule name="invalid-api-key">
+            <Step>
+                <Name>AM-Error-Unauthenticated</Name>
+            </Step>
+            <Condition>(fault.name = "FailedToResolveAPIKey") or (fault.name = "InvalidApiKey") or (fault.name = "InvalidApiKeyForGivenResource") or (fault.name = "ApiKeyNotApproved") or (fault.name = "DeveloperStatusNotActive") or (fault.name = "consumer_key_expired")</Condition>
+        </FaultRule>
+        <FaultRule name="armor-blocked">
+            <Step>
+                <Name>AM-Error-Blocked</Name>
+            </Step>
+            <Condition>fault.name = "FilterMatched"</Condition>
+        </FaultRule>
+        <FaultRule name="armor-unavailable">
+            <Step>
+                <Name>AM-Error-Unavailable</Name>
+            </Step>
+            <Condition>(SanitizeUserPrompt.SUP-Sanitize-Prompt.failed = true) and (fault.name != "FilterMatched")</Condition>
+        </FaultRule>
+    </FaultRules>
+    <DefaultFaultRule name="default-fault-handler">
+        <Step>
+            <Name>AM-Error-Default</Name>
+            <Condition>fault.name != "RaiseFault"</Condition>
+        </Step>
+        <AlwaysEnforce>false</AlwaysEnforce>
+    </DefaultFaultRule>
+</ProxyEndpoint>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ExtractVariables continueOnError="false" enabled="true" name="EV-Extract-Prompt">
+    <DisplayName>Extract the User Prompt</DisplayName>
+    <!-- Same text the native policy inspects: the last part of the last content. private.* is masked in Debug. -->
+    <Source clearPayload="false">request</Source>
+    <JSONPayload>
+        <Variable name="prompt" type="string">
+            <JSONPath>$.contents[-1].parts[-1].text</JSONPath>
+        </Variable>
+    </JSONPayload>
+    <VariablePrefix>private</VariablePrefix>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</ExtractVariables>

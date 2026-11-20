@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RaiseFault continueOnError="false" enabled="true" name="RF-Armor-Incomplete">
+    <DisplayName>Fail Closed: Not Every Filter Ran</DisplayName>
+    <FaultResponse>
+        <Set>
+            <Headers>
+                <Header name="X-Armor-Proxy">model-armor-101-native</Header>
+                <Header name="X-Armor-Verdict">incomplete</Header>
+            </Headers>
+            <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"code":503,"status":"ARMOR_INCOMPLETE","message":"Model Armor did not run every filter (invocationResult=@SanitizeUserPrompt.SUP-Sanitize-Prompt.invocationResult#), so the prompt was not forwarded.","proxy":"model-armor-101-native","requestId":"@messageid#"}}</Payload>
+            <StatusCode>503</StatusCode>
+            <ReasonPhrase>Service Unavailable</ReasonPhrase>
+        </Set>
+    </FaultResponse>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</RaiseFault>

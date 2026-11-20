@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<APIProxy revision="1" name="model-armor-101-native">
+    <Basepaths>/model-armor-101-native</Basepaths>
+    <ConfigurationVersion majorVersion="4" minorVersion="0"/>
+    <DisplayName>model-armor-101-native</DisplayName>
+    <Description>Model Armor 101 (CLI): native SanitizeUserPrompt policy screens the prompt, then Gemini Flash-Lite</Description>
+    <Policies>
+        <Policy>VA-Verify-API-Key</Policy>
+        <Policy>SUP-Sanitize-Prompt</Policy>
+        <Policy>SMR-Sanitize-Response</Policy>
+        <Policy>RF-Armor-Incomplete</Policy>
+        <Policy>AM-Prepare-Gemini-Request</Policy>
+        <Policy>AM-Set-Target-URL</Policy>
+        <Policy>AM-Armor-Headers</Policy>
+        <Policy>AM-Error-Blocked</Policy>
+        <Policy>AM-Error-Unavailable</Policy>
+        <Policy>AM-Error-Unauthenticated</Policy>
+        <Policy>AM-Error-Default</Policy>
+        <Policy>RF-Not-Found</Policy>
+    </Policies>
+    <ProxyEndpoints>
+        <ProxyEndpoint>default</ProxyEndpoint>
+    </ProxyEndpoints>
+    <Resources>
+        <Resource>properties://demo.properties</Resource>
+    </Resources>
+    <TargetEndpoints>
+        <TargetEndpoint>default</TargetEndpoint>
+    </TargetEndpoints>
+</APIProxy>

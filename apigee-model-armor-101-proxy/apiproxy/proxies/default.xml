@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ProxyEndpoint name="default">
+    <PreFlow name="PreFlow">
+        <Request>
+            <!-- 1. Consumer identity -->
+            <Step>
+                <Name>VA-Verify-API-Key</Name>
+            </Step>
+        </Request>
+        <Response/>
+    </PreFlow>
+    <Flows>
+        <Flow name="generate">
+            <Description>POST /generate: Gemini generateContent body, prompt screened by Model Armor first</Description>
+            <Condition>(proxy.pathsuffix MatchesPath "/generate") and (request.verb = "POST")</Condition>
+            <Request>
+                <!-- 2. Pick the inspection mode (x-armor-mode: native | callout) and start the Armor timer -->
+                <Step>
+                    <Name>AM-Armor-Init</Name>
+                </Step>
+                <!-- 3. Extract the single user part and validate the request shape:
+                         text (both modes) or one inlineData file (callout mode only: Model Armor
+                         screens the raw bytes as a byteItem; native SanitizeUserPrompt is text-only) -->
+                <Step>
+                    <Name>JS-Prepare-Armor</Name>
+                </Step>
+                <Step>
+                    <Name>RF-Bad-Request</Name>
+                    <Condition>armor.input_ok != "true"</Condition>
+                </Step>
+
+                <!-- 4a. MODE native: Apigee's built-in SanitizeUserPrompt policy.
+                         A filter match raises FilterMatched (400) -> FaultRule "armor-blocked". -->
+                <Step>
+                    <Name>SUP-Sanitize-Prompt</Name>
+                    <Condition>armor.mode = "native"</Condition>
+                </Step>
+
+                <!-- 4b. MODE callout: ServiceCallout to the Model Armor REST API (regional endpoint)
+                         POST .../templates/{id}:sanitizeUserPrompt with the proxy's Google identity. -->
+                <Step>
+                    <Name>SC-Model-Armor</Name>
+                    <Condition>armor.mode = "callout"</Condition>
+                </Step>
+
+                <!-- 5. Normalise the verdict for both modes (fail closed on partial / skipped results) -->
+                <Step>
+                    <Name>JS-Evaluate-Armor</Name>
+                </Step>
+                <Step>
+                    <Name>RF-Armor-Blocked</Name>
+                    <Condition>armor.verdict = "blocked"</Condition>
+                </Step>
+                <Step>
+                    <Name>RF-Armor-Incomplete</Name>
+                    <Condition>armor.verdict != "allowed"</Condition>
+                </Step>
+
+                <!-- 6. Clean prompt only: strip caller credentials, forward to Gemini Flash-Lite -->
+                <Step>
+                    <Name>AM-Prepare-Gemini-Request</Name>
+                </Step>
+            </Request>
+            <Response>
+                <!-- Disabled in this prompt-only demo (enabled="false" in the policy). -->
+                <Step>
+                    <Name>SMR-Sanitize-Response</Name>
+                    <Condition>response.status.code = 200</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-Armor-Headers</Name>
+                </Step>
+            </Response>
+        </Flow>
+        <Flow name="not-found">
+            <Description>Anything else: 404 JSON</Description>
+            <Request>
+                <Step>
+                    <Name>RF-Not-Found</Name>
+                </Step>
+            </Request>
+            <Response/>
+        </Flow>
+    </Flows>
+    <PostFlow name="PostFlow">
+        <Request/>
+        <Response/>
+    </PostFlow>
+    <PostClientFlow name="PostClientFlow">
+        <Response>
+            <!-- Audit entry read by the web UI admin panel (log id apigee-model-armor-101-logs) -->
+            <Step>
+                <Name>ML-Log-Audit</Name>
+            </Step>
+        </Response>
+    </PostClientFlow>
+    <HTTPProxyConnection>
+        <BasePath>/apigee-model-armor-101</BasePath>
+    </HTTPProxyConnection>
+    <RouteRule name="default">
+        <TargetEndpoint>default</TargetEndpoint>
+    </RouteRule>
+    <!-- Conditions below are mutually exclusive, so evaluation order does not matter. -->
+    <FaultRules>
+        <FaultRule name="invalid-api-key">
+            <Step>
+                <Name>AM-Error-Unauthenticated</Name>
+            </Step>
+            <Condition>(fault.name = "FailedToResolveAPIKey") or (fault.name = "InvalidApiKey") or (fault.name = "InvalidApiKeyForGivenResource") or (fault.name = "ApiKeyNotApproved") or (fault.name = "DeveloperStatusNotActive") or (fault.name = "consumer_key_expired")</Condition>
+        </FaultRule>
+        <!-- Content block: native FilterMatched fault, or the callout path's RF-Armor-Blocked. -->
+        <FaultRule name="armor-blocked">
+            <Step>
+                <Name>JS-Evaluate-Armor</Name>
+                <Condition>armor.verdict = null</Condition>
+            </Step>
+            <Step>
+                <Name>AM-Error-Armor-Blocked</Name>
+            </Step>
+            <Condition>(fault.name = "FilterMatched") or (armor.verdict = "blocked")</Condition>
+        </FaultRule>
+        <!-- Inspection could not be completed: never let the prompt through (fail closed, 503). -->
+        <FaultRule name="armor-unavailable">
+            <Step>
+                <Name>AM-Error-Armor-Unavailable</Name>
+            </Step>
+            <Condition>(armor.verdict = "incomplete") or ((SanitizeUserPrompt.SUP-Sanitize-Prompt.failed = true) and (fault.name != "FilterMatched")) or (servicecallout.SC-Model-Armor.failed = true)</Condition>
+        </FaultRule>
+    </FaultRules>
+    <DefaultFaultRule name="default-fault-handler">
+        <!-- RaiseFault policies already set their own JSON body/status. -->
+        <Step>
+            <Condition>fault.name != "RaiseFault"</Condition>
+            <Name>AM-Error-Default</Name>
+        </Step>
+        <AlwaysEnforce>false</AlwaysEnforce>
+    </DefaultFaultRule>
+</ProxyEndpoint>

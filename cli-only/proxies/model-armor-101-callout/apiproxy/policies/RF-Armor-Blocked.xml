@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RaiseFault continueOnError="false" enabled="true" name="RF-Armor-Blocked">
+    <DisplayName>400 Blocked by Model Armor</DisplayName>
+    <FaultResponse>
+        <Set>
+            <Headers>
+                <Header name="X-Armor-Proxy">model-armor-101-callout</Header>
+                <Header name="X-Armor-Verdict">blocked</Header>
+            </Headers>
+            <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"code":400,"status":"BLOCKED_BY_MODEL_ARMOR","message":"Prompt blocked by Model Armor (REST callout) before it reached Gemini.","proxy":"model-armor-101-callout","matchStates":{"rai":"@armor.rai#","pi_and_jailbreak":"@armor.pi_and_jailbreak#","malicious_uris":"@armor.malicious_uris#","sdp":"@armor.sdp#"},"requestId":"@messageid#"}}</Payload>
+            <StatusCode>400</StatusCode>
+            <ReasonPhrase>Bad Request</ReasonPhrase>
+        </Set>
+    </FaultResponse>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</RaiseFault>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RaiseFault continueOnError="false" enabled="true" name="RF-Armor-Incomplete">
+    <DisplayName>Model Armor Result Incomplete</DisplayName>
+    <!-- Body is finalised by FaultRule "armor-unavailable" (AM-Error-Armor-Unavailable). -->
+    <FaultResponse>
+        <Set>
+            <StatusCode>503</StatusCode>
+            <ReasonPhrase>Service Unavailable</ReasonPhrase>
+        </Set>
+    </FaultResponse>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</RaiseFault>

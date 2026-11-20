@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="false" enabled="true" name="AM-Armor-Init">
+    <DisplayName>Init Model Armor Variables</DisplayName>
+    <!-- Safe defaults so error payloads always render valid JSON. JS-Prepare-Armor sets armor.mode. -->
+    <AssignVariable>
+        <Name>armor.start_ms</Name>
+        <Ref>system.timestamp</Ref>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>armor.mode</Name>
+        <Value>native</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>armor.input</Name>
+        <Value>text</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>armor.reject_reason</Name>
+        <Value>Unsupported request shape.</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>armor.filters_json</Name>
+        <Value>[]</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>armor.matched</Name>
+        <Value>none</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>armor.latency_ms</Name>
+        <Value>0</Value>
+    </AssignVariable>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</AssignMessage>

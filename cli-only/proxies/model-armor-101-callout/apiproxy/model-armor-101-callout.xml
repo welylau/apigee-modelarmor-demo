@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<APIProxy revision="1" name="model-armor-101-callout">
+    <Basepaths>/model-armor-101-callout</Basepaths>
+    <ConfigurationVersion majorVersion="4" minorVersion="0"/>
+    <DisplayName>model-armor-101-callout</DisplayName>
+    <Description>Model Armor 101 (CLI): ServiceCallout to the Model Armor REST API screens the prompt, then Gemini Flash-Lite</Description>
+    <Policies>
+        <Policy>VA-Verify-API-Key</Policy>
+        <Policy>EV-Extract-Prompt</Policy>
+        <Policy>RF-Bad-Request</Policy>
+        <Policy>JS-Build-Armor-Body</Policy>
+        <Policy>SC-Model-Armor</Policy>
+        <Policy>EV-Armor-Result</Policy>
+        <Policy>RF-Armor-Blocked</Policy>
+        <Policy>RF-Armor-Incomplete</Policy>
+        <Policy>AM-Prepare-Gemini-Request</Policy>
+        <Policy>AM-Set-Target-URL</Policy>
+        <Policy>AM-Armor-Headers</Policy>
+        <Policy>AM-Error-Unavailable</Policy>
+        <Policy>AM-Error-Unauthenticated</Policy>
+        <Policy>AM-Error-Default</Policy>
+        <Policy>RF-Not-Found</Policy>
+    </Policies>
+    <ProxyEndpoints>
+        <ProxyEndpoint>default</ProxyEndpoint>
+    </ProxyEndpoints>
+    <Resources>
+        <Resource>properties://demo.properties</Resource>
+        <Resource>jsc://build-armor-body.js</Resource>
+    </Resources>
+    <TargetEndpoints>
+        <TargetEndpoint>default</TargetEndpoint>
+    </TargetEndpoints>
+</APIProxy>

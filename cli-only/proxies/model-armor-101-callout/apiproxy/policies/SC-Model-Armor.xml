@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ServiceCallout continueOnError="false" enabled="true" name="SC-Model-Armor">
+    <DisplayName>Model Armor REST: sanitizeUserPrompt</DisplayName>
+    <!-- Non-2xx raises a fault -> FaultRule "armor-unavailable" (503, fail closed). -->
+    <Request variable="armorRequest" clearPayload="true">
+        <Set>
+            <Headers>
+                <Header name="Content-Type">application/json</Header>
+            </Headers>
+            <Payload contentType="application/json">{private.armor_body}</Payload>
+            <Verb>POST</Verb>
+        </Set>
+        <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+    </Request>
+    <Response>armorResponse</Response>
+    <Timeout>10000</Timeout>
+    <HTTPTargetConnection>
+        <!-- Token of the deploy-time service account (needs roles/modelarmor.user). -->
+        <Authentication>
+            <GoogleAccessToken>
+                <Scopes>
+                    <Scope>https://www.googleapis.com/auth/cloud-platform</Scope>
+                </Scopes>
+            </GoogleAccessToken>
+        </Authentication>
+        <!-- A template in <location> only answers on its REGIONAL endpoint; the global host returns 403. -->
+        <URL>https://modelarmor.{propertyset.demo.armor_location}.rep.googleapis.com/v1/projects/{propertyset.demo.armor_project}/locations/{propertyset.demo.armor_location}/templates/{propertyset.demo.armor_template}:sanitizeUserPrompt</URL>
+    </HTTPTargetConnection>
+</ServiceCallout>

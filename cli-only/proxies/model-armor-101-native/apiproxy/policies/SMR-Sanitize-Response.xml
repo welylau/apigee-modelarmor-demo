@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- DISABLED. The SanitizeUserPrompt docs require a SanitizeModelResponse policy to exist before the
+     prompt policy is deployed. Set enabled="true" to also screen Gemini's answers. -->
+<SanitizeModelResponse continueOnError="false" enabled="false" name="SMR-Sanitize-Response">
+    <DisplayName>Model Armor: Sanitize Model Response (disabled)</DisplayName>
+    <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+    <ModelArmor>
+        <TemplateName>projects/{propertyset.demo.armor_project}/locations/{propertyset.demo.armor_location}/templates/{propertyset.demo.armor_template}</TemplateName>
+    </ModelArmor>
+    <UserPromptSource>{jsonPath('$.contents[-1].parts[-1].text',request.content)}</UserPromptSource>
+    <LLMResponseSource>{jsonPath('$.candidates[-1].content.parts[-1].text',response.content)}</LLMResponseSource>
+</SanitizeModelResponse>

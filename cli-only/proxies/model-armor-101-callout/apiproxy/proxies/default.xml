@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ProxyEndpoint name="default">
+    <PreFlow name="PreFlow">
+        <Request>
+            <Step>
+                <Name>VA-Verify-API-Key</Name>
+            </Step>
+        </Request>
+        <Response/>
+    </PreFlow>
+    <Flows>
+        <Flow name="generate">
+            <Condition>(proxy.pathsuffix MatchesPath "/generate") and (request.verb = "POST")</Condition>
+            <Request>
+                <!-- 1. Pull out the prompt and build the REST body -->
+                <Step>
+                    <Name>EV-Extract-Prompt</Name>
+                </Step>
+                <Step>
+                    <Name>RF-Bad-Request</Name>
+                    <Condition>(private.prompt = null) or (private.prompt = "")</Condition>
+                </Step>
+                <Step>
+                    <Name>JS-Build-Armor-Body</Name>
+                </Step>
+                <!-- 2. Call Model Armor yourself: POST .../templates/ID:sanitizeUserPrompt -->
+                <Step>
+                    <Name>SC-Model-Armor</Name>
+                </Step>
+                <!-- 3. Read the verdict and decide -->
+                <Step>
+                    <Name>EV-Armor-Result</Name>
+                </Step>
+                <Step>
+                    <Name>RF-Armor-Blocked</Name>
+                    <Condition>armor.match_state = "MATCH_FOUND"</Condition>
+                </Step>
+                <Step>
+                    <Name>RF-Armor-Incomplete</Name>
+                    <Condition>(armor.invocation != "SUCCESS") or (armor.match_state != "NO_MATCH_FOUND")</Condition>
+                </Step>
+                <!-- 4. Clean prompt: forward to Gemini -->
+                <Step>
+                    <Name>AM-Prepare-Gemini-Request</Name>
+                </Step>
+            </Request>
+            <Response>
+                <Step>
+                    <Name>AM-Armor-Headers</Name>
+                </Step>
+            </Response>
+        </Flow>
+        <Flow name="not-found">
+            <Request>
+                <Step>
+                    <Name>RF-Not-Found</Name>
+                </Step>
+            </Request>
+        </Flow>
+    </Flows>
+    <HTTPProxyConnection>
+        <BasePath>/model-armor-101-callout</BasePath>
+    </HTTPProxyConnection>
+    <RouteRule name="default">
+        <TargetEndpoint>default</TargetEndpoint>
+    </RouteRule>
+    <FaultRules>
+        <FaultRule name="invalid-api-key">
+            <Step>
+                <Name>AM-Error-Unauthenticated</Name>
+            </Step>
+            <Condition>(fault.name = "FailedToResolveAPIKey") or (fault.name = "InvalidApiKey") or (fault.name = "InvalidApiKeyForGivenResource") or (fault.name = "ApiKeyNotApproved") or (fault.name = "DeveloperStatusNotActive") or (fault.name = "consumer_key_expired")</Condition>
+        </FaultRule>
+        <FaultRule name="armor-unavailable">
+            <Step>
+                <Name>AM-Error-Unavailable</Name>
+            </Step>
+            <Condition>servicecallout.SC-Model-Armor.failed = true</Condition>
+        </FaultRule>
+    </FaultRules>
+    <DefaultFaultRule name="default-fault-handler">
+        <Step>
+            <Name>AM-Error-Default</Name>
+            <Condition>fault.name != "RaiseFault"</Condition>
+        </Step>
+        <AlwaysEnforce>false</AlwaysEnforce>
+    </DefaultFaultRule>
+</ProxyEndpoint>

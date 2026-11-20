@@ -1,0 +1,34 @@
+# --- local-only publish helpers (hold real values; never commit) ---
+sanitize.sh
+restore.sh
+.sanitize.map
+.sanitize.state
+.sanitize.state.tmp.*
+.sanitize.allow
+
+# --- secrets / env ---
+.env
+.env.*
+!.env.example
+*.pem
+*-key.json
+
+# --- runtime data & local work ---
+audit_logs.json
+*.db
+*.sqlite
+*.log
+scratch/
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+.terraform/
+terraform.tfstate*
+.DS_Store
+.vscode/
+.idea/
+*.zip
+*.tar.gz
+docs/demo-walkthrough.mp4

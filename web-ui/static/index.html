@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apigee X — Model Armor and Apigee Demo</title>
+  <!-- House favicon: multicolour Apigee mark (same URL as token.YOUR_DOMAIN / SMR). Don't swap for emoji. -->
+  <link rel="icon" type="image/svg+xml" href="https://www.gstatic.com/bricks/image/b45728f17bf88494b25d78a9fb27ae538e6eb4a06a972f6502b7410ff714532d.svg">
+
+  <!-- Fonts: Plus Jakarta Sans & JetBrains Mono (house style; do not swap) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- app.js is loaded synchronously in <head> so the saved theme applies before first paint;
+       it defers all DOM wiring to DOMContentLoaded. -->
+  <script src="app.js"></script>
+</head>
+<body data-demo="apigee-model-armor-101">
+  <div class="app-container">
+
+    <!-- ===================== HEADER ===================== -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="cloud-logos-wrapper">
+          <div class="logo-item" title="Google Cloud">
+            <img src="assets/google-cloud.png" alt="Google Cloud" class="gcp-logo-img">
+            <span class="gcp-name">Google Cloud</span>
+          </div>
+          <div class="brand-divider"></div>
+          <div class="logo-item apigee-brand" title="Apigee API Management">
+            <img src="assets/apigee-logo.svg" alt="" class="apigee-svg" width="24" height="24">
+            <span class="apigee-name">Apigee <strong class="x-accent">X</strong></span>
+          </div>
+        </div>
+        <div class="brand-divider"></div>
+        <div class="brand-title-area">
+          <div class="brand-title">
+            <span id="brandTitle">Model Armor and Apigee Demo</span>
+            <span class="brand-badge">Demo</span>
+          </div>
+          <span class="brand-subtitle" id="brandSubtitle">Apigee X + Model Armor + Gemini Flash-Lite</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="status-badge" id="gatewayBadge" role="status" title="Gateway connection (from /api/config)">
+          <span class="status-dot simulated" id="gatewayDot"></span>
+          <span id="gatewayText">Connecting…</span>
+        </div>
+        <button type="button" class="admin-nav-btn" id="btnOpenAdmin" aria-controls="adminDrawer" title="Open audit log">
+          <span aria-hidden="true">📋</span><span>Audit Log</span>
+        </button>
+        <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle light / dark mode" title="Toggle light / dark mode">
+          <svg id="themeIconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg id="themeIconMoon" style="display:none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ===================== MAIN: two panes + splitter ===================== -->
+    <main class="main-content">
+      <div class="simulator-layout">
+
+        <!-- LEFT: scenarios + input + architecture card -->
+        <aside class="simulator-left-panel" id="leftPanel" aria-label="Scenarios and input">
+          <!-- Collapsible: text scenarios + prompt (POST /api/run) -->
+          <section class="section-card collapsible" id="scenarioCard">
+            <h2 class="section-heading">
+              <button type="button" class="section-toggle" id="textSectionToggle" aria-expanded="true" aria-controls="textSectionBody" data-collapse-key="text">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+                <span>Screen texts</span>
+                <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+            </h2>
+            <div class="section-body" id="textSectionBody">
+              <div class="preset-list" id="scenarioList" role="group" aria-label="Scenario presets"></div>
+
+              <div class="section-divider" id="inputCard">
+                <div class="form-group">
+                  <div class="label-row">
+                    <span class="form-label" id="armorModeLabel">How Apigee calls Model Armor</span>
+                  </div>
+                  <div class="mode-toggle" id="armorModeGroup" role="radiogroup" aria-labelledby="armorModeLabel">
+                    <button type="button" class="mode-btn active" role="radio" aria-checked="true" data-mode="native">
+                      <span class="mode-title">Native policy</span><span class="mode-sub">SanitizeUserPrompt</span>
+                    </button>
+                    <button type="button" class="mode-btn" role="radio" aria-checked="false" data-mode="callout">
+                      <span class="mode-title">REST callout</span><span class="mode-sub">ServiceCallout</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top:12px">
+                  <div class="label-row">
+                    <label class="form-label" for="promptInput">Prompt</label>
+                    <span class="char-count" id="charCount">0 chars</span>
+                  </div>
+                  <textarea class="prompt-textarea" id="promptInput" maxlength="8000" placeholder="Pick a scenario or type a prompt…"></textarea>
+                  <div class="preset-sub" id="scenarioExpect"></div>
+                </div>
+                <div class="action-btn-group" style="margin-top:12px">
+                  <button type="button" class="btn btn-primary" id="runBtn" style="flex:1">
+                    <span class="spinner" id="runSpinner" hidden></span><span>🚀 Send via Apigee</span>
+                  </button>
+                  <button type="button" class="btn btn-secondary" id="clearBtn" title="Clear prompt and result">Clear</button>
+                </div>
+                <div class="tips-box" style="margin-top:12px">
+                  <strong>💡</strong> <kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd> sends. Switch the mode and resend to compare both paths.
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Collapsible: document upload, screened by BOTH modes side by side (POST /api/upload) -->
+          <section class="section-card collapsible" id="uploadCard">
+            <h2 class="section-heading">
+              <button type="button" class="section-toggle" id="docSectionToggle" aria-expanded="true" aria-controls="docSectionBody" data-collapse-key="doc">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3-3 3 3"/></svg>
+                <span>Screen a document</span>
+                <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+            </h2>
+            <div class="section-body" id="docSectionBody">
+              <!-- Sample CVs: View opens the PDF viewer, Use loads the file into the picker (filled by app.js) -->
+              <div class="sample-list" id="sampleList" role="group" aria-label="Sample CVs"></div>
+              <input type="file" id="fileInput" accept=".pdf,.txt,.md,.csv,.json" hidden>
+              <div class="drop-zone" id="dropZone">
+                <button type="button" class="btn btn-secondary" id="chooseFileBtn">📄 Choose file</button>
+                <span class="file-meta" id="fileMeta">or drop a PDF, TXT, MD, CSV or JSON here (max 1 MB)</span>
+              </div>
+              <div class="action-btn-group" style="margin-top:10px">
+                <button type="button" class="btn btn-apigee" id="uploadBtn" style="flex:1" disabled>
+                  <span class="spinner" id="uploadSpinner" hidden></span><span>🛡️ Screen with both modes</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="demo-arch-card" id="archCard">
+            <div class="demo-arch-header">
+              <div class="demo-arch-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="8.5" y="14" width="7" height="7" rx="1"/><path d="M6.5 10v2h11v-2M12 12v2"/></svg>
+              </div>
+              <div class="demo-arch-title-group">
+                <span class="demo-arch-title">Demo Architecture</span>
+                <span class="demo-arch-badge">Apigee X</span>
+              </div>
+            </div>
+            <p class="demo-arch-desc">Apigee screens every prompt with Model Armor, either natively or through a REST callout. Only clean prompts reach Gemini 2.5 Flash-Lite. Every decision is logged.</p>
+            <button type="button" class="btn btn-primary view-arch-btn" id="viewArchBtn" aria-controls="archModal">🔍 View Architecture Diagram</button>
+          </section>
+        </aside>
+
+        <div class="panel-splitter" id="panelSplitter" role="separator" aria-orientation="vertical"
+             aria-controls="leftPanel" aria-label="Resize panels (←/→, Home resets)" tabindex="0">
+          <div class="splitter-handle"></div>
+        </div>
+
+        <!-- RIGHT: results. One view at a time, following the open left section (app.js setView):
+             "Screen texts" -> #resultCard, "Screen a document" -> #uploadResultCard -->
+        <section class="simulator-right-panel" id="rightPanel" aria-label="Results">
+          <!-- Document screening result: native vs callout, side by side (filled by app.js) -->
+          <div class="card compare-card" id="uploadResultCard" hidden>
+            <div class="card-header">
+              <div>
+                <div class="card-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                  Document screening: native vs callout
+                </div>
+                <div class="endpoint-path" id="uploadFileLine">POST /api/upload</div>
+              </div>
+            </div>
+            <div class="compare-grid" id="compareGrid" aria-live="polite"></div>
+            <details class="raw-details" id="extractDetails" hidden>
+              <summary>Text the demo server extracted (what the native policy screened) <span class="raw-count" id="extractCount">0</span></summary>
+              <pre class="raw-pre" id="extractText"></pre>
+            </details>
+          </div>
+          <div class="card" id="resultCard">
+            <div class="card-header">
+              <div>
+                <div class="card-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                  Gateway Response &amp; Telemetry
+                </div>
+                <div class="endpoint-path" id="endpointPath">POST /api/run</div>
+              </div>
+              <div class="card-header-right">
+                <span class="latency-pill" title="End-to-end latency">⏱️ <span id="latencyValue">0 ms</span></span>
+                <span class="status-pill status-idle" id="statusPill" role="status">Idle</span>
+              </div>
+            </div>
+
+            <div class="metrics-bar" id="metricsBar">
+              <div class="metric-item"><span class="metric-label">HTTP</span><span class="metric-val" id="metricHttp">--</span></div>
+              <div class="metric-item"><span class="metric-label">Armor mode</span><span class="metric-val" id="metricMode">--</span></div>
+              <div class="metric-item"><span class="metric-label">Armor check</span><span class="metric-val" id="metricArmorMs">--</span></div>
+              <div class="metric-item highlight"><span class="metric-label">Gemini tokens</span><span class="metric-val" id="metricTotal">--</span></div>
+            </div>
+
+            <div class="verdict-banner" id="verdictBanner" aria-live="polite">
+              <span class="verdict-icon" id="verdictIcon" aria-hidden="true">🛡️</span>
+              <div>
+                <div class="verdict-title" id="verdictTitle">Waiting for a request</div>
+                <div class="verdict-desc" id="verdictDesc">Pick a scenario on the left and press Send.</div>
+              </div>
+            </div>
+
+            <div class="filter-row" id="filterRow" aria-label="Model Armor filters">
+              <span class="filter-row-label">Model Armor filters</span>
+              <span class="filter-chip" data-filter="rai">Responsible AI</span>
+              <span class="filter-chip" data-filter="pi_and_jailbreak">Prompt injection</span>
+              <span class="filter-chip" data-filter="malicious_uris">Malicious URL</span>
+              <span class="filter-chip" data-filter="sdp">Sensitive data</span>
+              <a class="template-link" id="armorTemplateLink" href="#" target="_blank" rel="noopener noreferrer" hidden
+                 title="Open this Model Armor template in the Google Cloud console (new tab)">
+                <span>Template</span> <code id="armorTemplateId"></code> <span aria-hidden="true">↗</span>
+              </a>
+            </div>
+
+            <div class="response-body-wrapper" id="responseBody">
+              <div class="empty-state"><div class="empty-icon">💬</div><p>The gateway response will appear here.</p></div>
+            </div>
+
+            <details class="raw-details" id="rawResponseDetails">
+              <summary>Raw response JSON</summary>
+              <pre class="raw-pre" id="rawResponse">{}</pre>
+            </details>
+            <details class="raw-details">
+              <summary>Request headers <span class="raw-count" id="reqHeaderCount">0</span></summary>
+              <pre class="raw-pre" id="rawReqHeaders">{}</pre>
+            </details>
+            <details class="raw-details">
+              <summary>Response headers <span class="raw-count" id="resHeaderCount">0</span></summary>
+              <pre class="raw-pre" id="rawResHeaders">{}</pre>
+            </details>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      Gateway: <code id="footerHost">—</code> • Proxy: <code id="footerBasepath">—</code> • Demo: <code>apigee-model-armor-101</code>
+    </footer>
+  </div>
+
+  <!-- ===================== RIGHT-EDGE TAB + AUDIT DRAWER ===================== -->
+  <button type="button" class="floating-admin-trigger" id="adminTab" aria-controls="adminDrawer" aria-expanded="false" title="Open audit log">
+    <span class="trigger-icon" aria-hidden="true">📋</span>
+    <span class="trigger-text">Audit Log</span>
+    <span class="trigger-badge">Live</span>
+  </button>
+  <div class="admin-drawer-backdrop" id="adminDrawerBackdrop"></div>
+  <aside class="admin-drawer" id="adminDrawer" role="dialog" aria-modal="true" aria-labelledby="adminDrawerTitle">
+    <div class="admin-drawer-header">
+      <div class="admin-header-left">
+        <span class="admin-header-icon" aria-hidden="true">📋</span>
+        <div>
+          <div class="admin-title-row">
+            <h2 id="adminDrawerTitle">Audit Log</h2>
+            <span class="admin-badge">apigee-model-armor-101</span>
+          </div>
+          <span class="admin-subtitle">Every request through the gateway, newest first</span>
+        </div>
+      </div>
+      <div class="admin-header-right">
+        <button type="button" class="btn btn-secondary" id="btnRefreshAdmin">🔄 Refresh</button>
+        <button type="button" class="admin-drawer-close-btn" id="btnCloseAdmin" aria-label="Close audit log (Esc)" title="Close (Esc)">&times;</button>
+      </div>
+    </div>
+    <div class="admin-drawer-content">
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-icon blue" aria-hidden="true">📡</div><div class="kpi-data"><span class="kpi-title">Requests</span><span class="kpi-value" id="kpiRequests">0</span><span class="kpi-subtext">in this log</span></div></div>
+        <div class="kpi-card"><div class="kpi-icon green" aria-hidden="true">✅</div><div class="kpi-data"><span class="kpi-title">Allowed</span><span class="kpi-value" id="kpiAllowed">0</span><span class="kpi-subtext">verdict = allowed</span></div></div>
+        <div class="kpi-card"><div class="kpi-icon red" aria-hidden="true">⛔</div><div class="kpi-data"><span class="kpi-title">Blocked / error</span><span class="kpi-value" id="kpiBlocked">0</span><span class="kpi-subtext" id="kpiBlockRate">0% rate</span></div></div>
+        <div class="kpi-card"><div class="kpi-icon orange" aria-hidden="true">⚡</div><div class="kpi-data"><span class="kpi-title">Avg latency</span><span class="kpi-value" id="kpiLatency">0 ms</span><span class="kpi-subtext">all requests</span></div></div>
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <div>
+            <h3>Request ledger <span class="badge-counter" id="auditCount">0 entries</span></h3>
+            <p class="table-desc">From <code>/api/admin/logs</code>. No prompts, keys or PII are stored in this view.</p>
+          </div>
+          <label class="sr-only" for="auditSearch">Filter audit entries</label>
+          <input type="search" id="auditSearch" class="search-input" placeholder="Filter by scenario, verdict or status…">
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead><tr><th>Time</th><th>Scenario</th><th>Mode</th><th>Matched filters</th><th>HTTP</th><th>Verdict</th><th>Latency</th></tr></thead>
+            <tbody id="auditTableBody"><tr><td colspan="7" class="empty-cell">No requests yet. Run a scenario to populate the ledger.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================== ARCHITECTURE MODAL ===================== -->
+  <div class="modal-overlay" id="archModal" role="dialog" aria-modal="true" aria-labelledby="archModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2 class="modal-heading" id="archModalTitle">Model Armor and Apigee Demo — Architecture</h2>
+          <span class="modal-badge">Apigee X</span>
+        </div>
+        <button type="button" class="close-btn" id="archModalCloseBtn" aria-label="Close dialog (Esc)">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-diagram-container">
+          <!-- Source of truth: docs/architecture.png, served as assets/architecture.png. Falls back to the placeholder. -->
+          <img src="assets/architecture.png" data-fallback="assets/architecture-placeholder.svg" alt="Model Armor and Apigee Demo architecture diagram" class="modal-diagram-img" id="archImg">
+        </div>
+        <div class="modal-steps-grid">
+          <div class="modal-step-card"><span class="step-tag">STEP 1</span><h3 class="step-title">Verify the caller</h3><p class="step-desc">Apigee checks the app's API key. The browser never sees it; this app's server adds it.</p></div>
+          <div class="modal-step-card"><span class="step-tag">STEP 2</span><h3 class="step-title">Screen the prompt</h3><p class="step-desc">Model Armor checks the prompt for injection, harmful content, bad URLs and sensitive data. <strong>Native</strong> uses the built-in policy; <strong>Callout</strong> calls the REST API.</p></div>
+          <div class="modal-step-card"><span class="step-tag">STEP 3</span><h3 class="step-title">Forward to Gemini</h3><p class="step-desc">Only clean prompts reach Gemini 2.5 Flash-Lite. A match returns <code>400</code>; if Model Armor can't answer, Apigee returns <code>503</code> and nothing is forwarded.</p></div>
+          <div class="modal-step-card"><span class="step-tag">AUDIT</span><h3 class="step-title">Log the decision</h3><p class="step-desc">Mode, verdict and matched filter names go to Cloud Logging. Prompt text is never logged.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===================== PDF VIEWER MODAL (sample CVs) ===================== -->
+  <div class="modal-overlay" id="pdfModal" role="dialog" aria-modal="true" aria-labelledby="pdfModalTitle">
+    <div class="modal-card pdf-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2 class="modal-heading" id="pdfModalTitle">Sample CV</h2>
+          <span class="modal-badge" id="pdfModalBadge">PDF</span>
+        </div>
+        <div class="pdf-modal-actions">
+          <button type="button" class="btn btn-apigee" id="pdfUseBtn">Use this file</button>
+          <a class="btn btn-secondary" id="pdfOpenLink" href="#" target="_blank" rel="noopener noreferrer">Open in new tab ↗</a>
+          <button type="button" class="close-btn" id="pdfModalCloseBtn" aria-label="Close PDF viewer (Esc)">&times;</button>
+        </div>
+      </div>
+      <div class="pdf-modal-body">
+        <p class="pdf-note" id="pdfModalNote"></p>
+        <iframe class="pdf-frame" id="pdfFrame" title="PDF viewer" src="about:blank"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+</body>
+</html>

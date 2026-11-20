@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RaiseFault continueOnError="false" enabled="true" name="RF-Bad-Request">
+    <DisplayName>No Prompt Text</DisplayName>
+    <FaultResponse>
+        <Set>
+            <Payload contentType="application/json">{"error":{"code":400,"status":"INVALID_ARGUMENT","message":"Send a Gemini generateContent body with contents[].parts[].text.","proxy":"model-armor-101-callout"}}</Payload>
+            <StatusCode>400</StatusCode>
+            <ReasonPhrase>Bad Request</ReasonPhrase>
+        </Set>
+    </FaultResponse>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</RaiseFault>

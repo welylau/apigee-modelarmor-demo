@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Javascript continueOnError="false" enabled="true" timeLimit="1000" name="JS-Prepare-Request">
+    <DisplayName>Read Prompt or File, Build Model Armor Body</DisplayName>
+    <Properties>
+        <Property name="maxPromptChars">8000</Property>
+        <!-- ~1 MB file = ~1.4M base64 chars -->
+        <Property name="maxFileBase64Chars">1400000</Property>
+        <!-- Proxy-owned instruction sent to Gemini with an uploaded file (the client cannot change it). -->
+        <Property name="fileInstruction">You are reviewing an uploaded document. Summarise it in three short bullet points.</Property>
+    </Properties>
+    <ResourceURL>jsc://prepare-request.js</ResourceURL>
+</Javascript>
