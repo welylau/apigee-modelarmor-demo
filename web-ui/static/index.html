@@ -89,19 +89,6 @@
               <div class="section-divider" id="inputCard">
                 <div class="form-group">
                   <div class="label-row">
-                    <span class="form-label" id="armorModeLabel">How Apigee calls Model Armor</span>
-                  </div>
-                  <div class="mode-toggle" id="armorModeGroup" role="radiogroup" aria-labelledby="armorModeLabel">
-                    <button type="button" class="mode-btn active" role="radio" aria-checked="true" data-mode="native">
-                      <span class="mode-title">Native policy</span><span class="mode-sub">SanitizeUserPrompt</span>
-                    </button>
-                    <button type="button" class="mode-btn" role="radio" aria-checked="false" data-mode="callout">
-                      <span class="mode-title">REST callout</span><span class="mode-sub">ServiceCallout</span>
-                    </button>
-                  </div>
-                </div>
-                <div class="form-group" style="margin-top:12px">
-                  <div class="label-row">
                     <label class="form-label" for="promptInput">Prompt</label>
                     <span class="char-count" id="charCount">0 chars</span>
                   </div>
@@ -109,13 +96,13 @@
                   <div class="preset-sub" id="scenarioExpect"></div>
                 </div>
                 <div class="action-btn-group" style="margin-top:12px">
-                  <button type="button" class="btn btn-primary" id="runBtn" style="flex:1">
-                    <span class="spinner" id="runSpinner" hidden></span><span>🚀 Send via Apigee</span>
+                  <button type="button" class="btn btn-apigee" id="runBtn" style="flex:1">
+                    <span class="spinner" id="runSpinner" hidden></span><span>🛡️ Screen with both modes</span>
                   </button>
                   <button type="button" class="btn btn-secondary" id="clearBtn" title="Clear prompt and result">Clear</button>
                 </div>
                 <div class="tips-box" style="margin-top:12px">
-                  <strong>💡</strong> <kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd> sends. Switch the mode and resend to compare both paths.
+                  <strong>💡</strong> <kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd> sends. Native policy and REST callout run at the same time.
                 </div>
               </div>
             </div>
@@ -167,7 +154,8 @@
         </div>
 
         <!-- RIGHT: results. One view at a time, following the open left section (app.js setView):
-             "Screen texts" -> #resultCard, "Screen a document" -> #uploadResultCard -->
+             "Screen texts" -> #resultCard, "Screen a document" -> #uploadResultCard.
+             Both show native vs callout side by side (columns built by app.js compareColumn). -->
         <section class="simulator-right-panel" id="rightPanel" aria-label="Results">
           <!-- Document screening result: native vs callout, side by side (filled by app.js) -->
           <div class="card compare-card" id="uploadResultCard" hidden>
@@ -180,70 +168,32 @@
                 <div class="endpoint-path" id="uploadFileLine">POST /api/upload</div>
               </div>
             </div>
+            <div class="compare-summary" id="uploadSummary" hidden></div>
             <div class="compare-grid" id="compareGrid" aria-live="polite"></div>
             <details class="raw-details" id="extractDetails" hidden>
               <summary>Text the demo server extracted (what the native policy screened) <span class="raw-count" id="extractCount">0</span></summary>
               <pre class="raw-pre" id="extractText"></pre>
             </details>
           </div>
-          <div class="card" id="resultCard">
+          <!-- Text screening result: the same prompt through native vs callout, side by side (filled by app.js) -->
+          <div class="card compare-card" id="resultCard">
             <div class="card-header">
               <div>
                 <div class="card-title">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                  Gateway Response &amp; Telemetry
+                  Text screening: native vs callout
                 </div>
-                <div class="endpoint-path" id="endpointPath">POST /api/run</div>
+                <div class="endpoint-path" id="endpointPath">POST /api/compare</div>
               </div>
               <div class="card-header-right">
-                <span class="latency-pill" title="End-to-end latency">⏱️ <span id="latencyValue">0 ms</span></span>
-                <span class="status-pill status-idle" id="statusPill" role="status">Idle</span>
+                <a class="template-link" id="armorTemplateLink" href="#" target="_blank" rel="noopener noreferrer" hidden
+                   title="Open this Model Armor template in the Google Cloud console (new tab)">
+                  <span>Template</span> <code id="armorTemplateId"></code> <span aria-hidden="true">↗</span>
+                </a>
               </div>
             </div>
-
-            <div class="metrics-bar" id="metricsBar">
-              <div class="metric-item"><span class="metric-label">HTTP</span><span class="metric-val" id="metricHttp">--</span></div>
-              <div class="metric-item"><span class="metric-label">Armor mode</span><span class="metric-val" id="metricMode">--</span></div>
-              <div class="metric-item"><span class="metric-label">Armor check</span><span class="metric-val" id="metricArmorMs">--</span></div>
-              <div class="metric-item highlight"><span class="metric-label">Gemini tokens</span><span class="metric-val" id="metricTotal">--</span></div>
-            </div>
-
-            <div class="verdict-banner" id="verdictBanner" aria-live="polite">
-              <span class="verdict-icon" id="verdictIcon" aria-hidden="true">🛡️</span>
-              <div>
-                <div class="verdict-title" id="verdictTitle">Waiting for a request</div>
-                <div class="verdict-desc" id="verdictDesc">Pick a scenario on the left and press Send.</div>
-              </div>
-            </div>
-
-            <div class="filter-row" id="filterRow" aria-label="Model Armor filters">
-              <span class="filter-row-label">Model Armor filters</span>
-              <span class="filter-chip" data-filter="rai">Responsible AI</span>
-              <span class="filter-chip" data-filter="pi_and_jailbreak">Prompt injection</span>
-              <span class="filter-chip" data-filter="malicious_uris">Malicious URL</span>
-              <span class="filter-chip" data-filter="sdp">Sensitive data</span>
-              <a class="template-link" id="armorTemplateLink" href="#" target="_blank" rel="noopener noreferrer" hidden
-                 title="Open this Model Armor template in the Google Cloud console (new tab)">
-                <span>Template</span> <code id="armorTemplateId"></code> <span aria-hidden="true">↗</span>
-              </a>
-            </div>
-
-            <div class="response-body-wrapper" id="responseBody">
-              <div class="empty-state"><div class="empty-icon">💬</div><p>The gateway response will appear here.</p></div>
-            </div>
-
-            <details class="raw-details" id="rawResponseDetails">
-              <summary>Raw response JSON</summary>
-              <pre class="raw-pre" id="rawResponse">{}</pre>
-            </details>
-            <details class="raw-details">
-              <summary>Request headers <span class="raw-count" id="reqHeaderCount">0</span></summary>
-              <pre class="raw-pre" id="rawReqHeaders">{}</pre>
-            </details>
-            <details class="raw-details">
-              <summary>Response headers <span class="raw-count" id="resHeaderCount">0</span></summary>
-              <pre class="raw-pre" id="rawResHeaders">{}</pre>
-            </details>
+            <div class="compare-summary" id="textSummary" hidden></div>
+            <div class="compare-grid" id="textCompareGrid" aria-live="polite"></div>
           </div>
         </section>
       </div>

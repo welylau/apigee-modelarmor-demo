@@ -4,6 +4,7 @@
 
 ![Apigee X](https://img.shields.io/badge/Apigee-X-4285F4?logo=googlecloud&logoColor=white)
 ![Model Armor](https://img.shields.io/badge/Model_Armor-sanitizeUserPrompt-F04D23?logo=googlecloud&logoColor=white)
+![Documents](https://img.shields.io/badge/byteItem-PDF_%7C_TXT_%7C_CSV-F04D23?logo=adobeacrobatreader&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash--Lite-4285F4?logo=googlegemini&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
@@ -16,23 +17,24 @@
 
 Teams that put LLMs in front of users must stop prompt injection, harmful requests, malicious links and
 leaked card numbers before they reach the model, without changing every app. This demo puts that check in
-the **Apigee X** gateway: every prompt goes to **Model Armor** first, and only clean prompts reach
-**Gemini 2.5 Flash-Lite** on Vertex AI. You can switch between the two ways Apigee calls Model Armor and
-compare them side by side.
+the **Apigee X** gateway: every prompt **and every uploaded document (PDF, TXT, CSV)** goes to **Model Armor**
+first, and only clean input reaches **Gemini 2.5 Flash-Lite** on Vertex AI. Each request runs through both
+ways Apigee can call Model Armor, and the two results are shown side by side.
 
 **What you will see:**
 
-- Five one-click scenarios: one clean prompt and four that Model Armor blocks (injection, malicious URL, harassment, credit card)
-- A **mode switch**: Apigee's native `SanitizeUserPrompt` policy, or a `ServiceCallout` to the Model Armor REST API (`…:sanitizeUserPrompt`)
-- The matched filter and the Model Armor check time for each request, plus an audit log of every decision
+- **Screen texts:** five one-click scenarios, one clean prompt and four that Model Armor blocks (injection, malicious URL, harassment, credit card)
+- **Screen a document (PDF / TXT / CSV):** upload a file, or use one of two sample CVs. The REST callout sends the **raw file** to Model Armor as a **`byteItem`**, so Model Armor parses the PDF itself, including hidden white text. The native policy only screens text, so the demo server extracts the text first. Step-by-step guide: **[screen-a-doc.md](screen-a-doc.md)**
+- **Native vs callout, side by side** for both texts and documents: Apigee's native `SanitizeUserPrompt` policy and a `ServiceCallout` to the Model Armor REST API (`…:sanitizeUserPrompt`) run at the same time, with a one-line summary (same verdict? which check was faster?)
+- The matched filters and the Model Armor check time for each mode, plus an audit log of every decision
 
 ## Architecture
 
 ![Architecture](docs/architecture.png)
 
-1. The web UI's server (BFF) adds the app key and sends `POST /apigee-model-armor-101/generate` with header `x-armor-mode: native|callout`.
-2. Apigee verifies the key and accepts only one user part: a text part, or (callout mode only) one uploaded file (anything else returns `400` before any scan).
-3. Apigee sends the prompt to Model Armor, using the native policy or the REST callout depending on the header.
+1. The web UI's server (BFF) adds the app key and sends `POST /apigee-model-armor-101/generate` twice in parallel, once per mode (header `x-armor-mode: native` and `callout`).
+2. Apigee verifies the key and accepts only one user part: a text part, or (callout mode only) one uploaded file as `inlineData` (anything else returns `400` before any scan).
+3. Apigee sends the input to Model Armor: text via the native policy or the REST callout; a file via the REST callout as `userPromptData.byteItem` (`PDF` / `TXT` / `CSV`), so Model Armor parses the document itself.
 4. One shared script turns either result into a verdict. A match returns `400 BLOCKED_BY_MODEL_ARMOR` with the filter name. A skipped filter, partial result or outage returns `503` (fail closed).
 5. Clean prompts go to Gemini 2.5 Flash-Lite with the proxy's Google identity. Mode, verdict and filter names go to Cloud Logging. Prompt text is never logged.
 
@@ -51,7 +53,13 @@ filter in its `requiredFilters` property (`rai,sdp,pi_and_jailbreak,malicious_ur
 `SMR-Sanitize-Response` is attached but **disabled**: the policy docs ask for a SanitizeModelResponse policy before
 SanitizeUserPrompt is deployed. Set `enabled="true"` if you also want to screen Gemini's answers.
 
-### Screen a document (both modes side by side)
+### Screen texts (both modes side by side)
+
+The **Screen texts** card sends one prompt to the demo server (`POST /api/compare`), which calls the proxy twice in
+parallel, once per `x-armor-mode`. Both results appear next to each other with the same layout as documents, plus a
+summary line: whether the verdicts match, and the Model Armor check time of each mode.
+
+### Screen a document: PDF / TXT / CSV as a Model Armor `byteItem`
 
 The **Screen a document** card uploads one file (PDF, TXT, MD, CSV or JSON, max 1 MB). The demo server
 (`POST /api/upload`) sends it through both modes at the same time and shows the two results next to each other:
@@ -64,9 +72,15 @@ The **Screen a document** card uploads one file (PDF, TXT, MD, CSV or JSON, max 
 | Limit | 8,000 chars of text (never truncated: too long = not sent) | ~1 MB file (`maxFileBase64Chars`) |
 
 The native policy only accepts text, so a file sent in native mode is rejected with `400 INVALID_ARGUMENT`.
+`byteItem` only knows `PDF`, `TXT` and `CSV`, so `.md` and `.json` files are sent as `text/plain` / `TXT`.
 Hidden text (white, 4 pt) is extracted and screened like visible text, because an LLM would read it too.
 Try [`test-data/resume-injection-sample.pdf`](test-data/resume-injection-sample.pdf) (regenerate with
 `python3 scripts/make-test-resume.py`).
+
+> [!TIP]
+> **[screen-a-doc.md](screen-a-doc.md)** walks through the document flow step by step: the demo server, every
+> proxy policy in order (`JS-Prepare-Armor` building the `byteItem`, `SC-Model-Armor`, `JS-Evaluate-Armor`, …),
+> sample responses, a curl example, limits and where to change each setting.
 
 ### API reference
 
@@ -85,8 +99,13 @@ curl -sk -X POST "https://YOUR_APIGEE_HOST/apigee-model-armor-101/generate" \
 
 ![Web UI](docs/webui-screenshot.png)
 
-- **Left panel**: two collapsible sections — **Screen texts** (five scenario presets, **native / callout** mode switch, prompt box) and **Screen a document** (sample clean & injection CVs with built-in PDF viewer, file upload) — plus the architecture card
-- **Main panel**: shows the matching view — **Gateway Response & Telemetry** for text prompts, or **Document screening: native vs callout** side-by-side comparison for uploaded documents — with HTTP status, Armor mode, check time, Gemini tokens, verdict banner, filter chips, answer and raw JSON / headers
+- **Left panel**: two collapsible sections plus the architecture card
+  - **Screen texts**: five scenario presets, prompt box, **Screen with both modes**
+  - **Screen a document**: sample clean and injection CVs with a built-in PDF viewer, file upload (PDF, TXT, MD, CSV, JSON), **Screen with both modes**
+- **Main panel**: **Text screening** or **Document screening: native vs callout**, following the open section
+  - Summary line: same or different verdict, and the Model Armor check time of each mode
+  - One column per mode: status, what Model Armor saw (text or `byteItem` file), HTTP / Armor / Total / Tokens, filter chips, verdict banner, Gemini's answer, raw request and response
+  - Documents also show the text the demo server extracted for the native policy
 - **Right edge**: audit log drawer (mode, matched filters, status, latency); top right: theme toggle
 
 ## Repository structure
@@ -96,12 +115,15 @@ apigee-model-armor-101/
 ├── apigee-model-armor-101-proxy/
 │   ├── apiproxy/             # proxy bundle (policies, flows, jsc/, properties)
 │   └── tests/                # offline tests for the proxy JavaScript (node)
-├── web-ui/                   # stdlib Python BFF + vanilla HTML/CSS/JS (Cloud Run)
+├── web-ui/                   # stdlib Python BFF + vanilla HTML/CSS/JS (Cloud Run); pdf_text.py = PDF text extraction
 ├── scripts/
 │   ├── setup-model-armor.sh  # API, template, IAM for the runtime SA
 │   ├── setup-apigee.sh       # import/deploy proxy, product, developer, app -> web-ui/.env
-│   └── test-demo.sh          # live smoke tests, both modes
+│   ├── test-demo.sh          # live smoke tests, both modes
+│   └── make-test-resume.py   # regenerates the sample CV PDFs
+├── test-data/                # resume-clean-sample.pdf, resume-injection-sample.pdf (hidden-text injection)
 ├── docs/                     # architecture.png (+ HTML source), webui-screenshot.png
+├── screen-a-doc.md           # step-by-step guide to the document (byteItem) flow
 └── LICENSE
 ```
 
@@ -145,8 +167,15 @@ ARMOR_LOCATION=YOUR_REGION ./scripts/setup-apigee.sh
 | 4 | Harmful content | Insulting message about a coworker | `400` · `rai:harassment` |
 | 5 | Credit card | Public test number `4111 1111 1111 1111` | `400` · `sdp` |
 
-Run any scenario in **Native**, switch to **REST callout** and run it again: the verdict is the same; the Armor check time shows the difference.
+Every scenario runs in **both modes at once**: the verdict is the same, and the summary line shows the Armor check time of each.
 Some prompts trip more than one filter (live: the injection prompt also matches `rai:dangerous`, the harassment prompt also `rai:hate_speech`).
+
+**Document scenarios** (Screen a document, sample CVs of fictional people):
+
+| # | Sample | Content | Native (extracted text) | Callout (`byteItem` PDF) |
+|---|---|---|---|---|
+| 6 | Sarah Lim (clean) | Normal CV, no hidden text | `200` allowed | `200` allowed |
+| 7 | Daniel Koh (injection) | Visible prompt injection and profanity, plus hidden white 4 pt text | `400` · `pi_and_jailbreak`, `rai:harassment`, `rai:dangerous` | `400` · same filters |
 
 ### Notes from the live deployment
 

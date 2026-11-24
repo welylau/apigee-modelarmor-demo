@@ -4,9 +4,12 @@ Model Armor 101 - demo web server (Backend-for-Frontend).
 
 Serves ./static and proxies scenario runs to the Apigee proxy
 https://$APIGEE_HOST/apigee-model-armor-101/generate with the app key (env API_KEY).
-The UI picks how Apigee calls Model Armor; the BFF forwards it as header x-armor-mode:
+The BFF tells the proxy how to call Model Armor with header x-armor-mode:
   native  -> SanitizeUserPrompt policy (built into Apigee)
   callout -> ServiceCallout to the Model Armor REST API (templates/*:sanitizeUserPrompt)
+
+POST /api/compare sends one text prompt through BOTH modes at once (the "Screen texts" view).
+POST /api/run sends it through one mode (body armorMode); kept for scripts.
 
 POST /api/upload screens one uploaded document through BOTH modes at once:
   native  -> this server extracts the text (pdf_text.py) and sends it as a text prompt,
@@ -563,6 +566,8 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
             return self._send_json(err[0], {"ok": False, "error": err[1]})
         if path == "/api/run":
             return self._handle_run(data)
+        if path == "/api/compare":
+            return self._handle_compare(data)
         if path == "/api/upload":
             return self._handle_upload(data)
         if path == "/api/admin/refresh":
@@ -570,20 +575,50 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
             return self._send_json(200, {"ok": ok, **audit_store.get_data()})
         self._send_json(404, {"ok": False, "error": "Unknown API endpoint"})
 
-    def _handle_run(self, data):
+    def _read_prompt(self, data):
+        """(scenario_id, scenario, prompt), or sends a 400 and returns None."""
         scenario_id = data.get("scenarioId") or "custom"
         if not isinstance(scenario_id, str) or not re.fullmatch(r"[a-z0-9-]{1,64}", scenario_id):
-            return self._send_json(400, {"ok": False, "error": "invalid scenarioId"})
-        armor_mode = data.get("armorMode") or "native"
-        if armor_mode not in ARMOR_MODE_IDS:
-            return self._send_json(400, {"ok": False, "error": "armorMode must be native or callout"})
+            self._send_json(400, {"ok": False, "error": "invalid scenarioId"})
+            return None
         scenario = SCENARIO_BY_ID.get(scenario_id)
         prompt = data.get("prompt") or (scenario or {}).get("prompt") or ""
         if not isinstance(prompt, str) or not prompt.strip():
-            return self._send_json(400, {"ok": False, "error": "prompt cannot be empty"})
+            self._send_json(400, {"ok": False, "error": "prompt cannot be empty"})
+            return None
         if len(prompt) > MAX_PROMPT_CHARS:
-            return self._send_json(400, {"ok": False, "error": f"prompt exceeds {MAX_PROMPT_CHARS} characters"})
+            self._send_json(400, {"ok": False, "error": f"prompt exceeds {MAX_PROMPT_CHARS} characters"})
+            return None
+        return scenario_id, scenario, prompt
+
+    def _handle_run(self, data):
+        """Single mode (kept for scripts and older clients; the UI uses /api/compare)."""
+        armor_mode = data.get("armorMode") or "native"
+        if armor_mode not in ARMOR_MODE_IDS:
+            return self._send_json(400, {"ok": False, "error": "armorMode must be native or callout"})
+        parsed = self._read_prompt(data)
+        if not parsed:
+            return None
+        scenario_id, scenario, prompt = parsed
         self._send_json(200, execute(scenario_id, armor_mode, gemini_body(prompt), prompt, scenario))
+
+    def _handle_compare(self, data):
+        """Send the same text prompt through both modes concurrently, like /api/upload does for files."""
+        parsed = self._read_prompt(data)
+        if not parsed:
+            return None
+        scenario_id, scenario, prompt = parsed
+        body = gemini_body(prompt)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            futures = {mode: pool.submit(execute, scenario_id, mode, body, prompt, scenario)
+                       for mode in ("native", "callout")}
+            results = {mode: f.result() for mode, f in futures.items()}
+        preview = {"contents": [{"role": "user", "parts": [{"text": f"<prompt, {len(prompt):,} chars>"}]}]}
+        for mode, r in results.items():
+            via = "the SanitizeUserPrompt policy" if mode == "native" else "the REST API (userPromptData.text)"
+            r["input"] = {"kind": "text", "bodyPreview": preview,
+                          "summary": f"The prompt text ({len(prompt):,} chars) via {via}"}
+        self._send_json(200, {"ok": True, "scenarioId": scenario_id, "promptChars": len(prompt), "results": results})
 
     def _handle_upload(self, data):
         """Screen one document through both modes concurrently. The file is never written to disk."""

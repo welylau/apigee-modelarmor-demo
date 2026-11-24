@@ -6,10 +6,12 @@
  *
  * Backend contract
  *   GET  /api/config        -> {title, apigeeHost, proxyBasepath, apiKeyConfigured, scenarios:[{id,label,description,prompt,expect}]}
- *   POST /api/run           body {scenarioId, prompt, armorMode:'native'|'callout'}
- *                           (+ armor:{mode, verdict, filters[], latencyMs} in the result)
- *                           -> {ok, httpStatus, latencyMs, tokens:{prompt,completion,total}|null,
- *                               verdict:'allowed'|'blocked'|'error', response, requestHeaders, responseHeaders}
+ *   POST /api/compare       body {scenarioId, prompt} -> {ok, scenarioId, promptChars,
+ *                           results:{native:<run result + input>, callout:<run result + input>}}
+ *                           run result = {ok, httpStatus, latencyMs, tokens:{prompt,completion,total}|null,
+ *                               verdict:'allowed'|'blocked'|'error', armor:{mode, verdict, filters[], latencyMs},
+ *                               response, requestHeaders, responseHeaders}
+ *   POST /api/run           same, one mode only (body armorMode); not used by this UI
  *   GET  /api/admin/logs    -> {entries:[{ts, scenarioId, httpStatus, verdict, latencyMs}]}
  *   POST /api/admin/refresh
  *   POST /api/upload        body {filename, dataBase64} -> {ok, file:{name, bytes, extractedChars, extractedText, ...},
@@ -20,7 +22,7 @@
  *   window.demoApp                        facade (see bottom of file)
  *   window 'demo:ready'                   facade available, scenarios rendered (fallback list at first)
  *   window 'demo:configloaded'            /api/config applied (scenarios may have changed)
- *   window 'demo:runresult'               detail = result + {scenarioId} after every run
+ *   window 'demo:runresult'               detail = /api/compare body + {scenarioId} after every text run
  *   window 'demo:uploadresult'            detail = /api/upload body after every document screening
  *   window 'demo:themechange'             detail {theme}
  *
@@ -71,7 +73,6 @@
     config: { title: '', apigeeHost: '', proxyBasepath: '', apiKeyConfigured: false },
     scenarios: FALLBACK_SCENARIOS.slice(),
     selected: null,
-    armorMode: store.get('armorMode') === 'callout' ? 'callout' : 'native',
     running: false,
     mock: window.location.protocol === 'file:' || params.get('mock') === '1',
     mockLog: [],
@@ -161,7 +162,7 @@
     }
     renderScenarios();
     const { apigeeHost, proxyBasepath, apiKeyConfigured } = state.config;
-    els.endpointPath.textContent = apigeeHost ? `POST ${apigeeHost}${proxyBasepath}` : 'POST /api/run';
+    els.endpointPath.textContent = apigeeHost ? `POST ${apigeeHost}${proxyBasepath} · x-armor-mode: native + callout` : 'POST /api/compare';
     els.footerHost.textContent = apigeeHost || '—';
     els.footerBasepath.textContent = proxyBasepath || '—';
     if (state.mock || (cfg && cfg.mock === true)) setGateway('warn', 'Mock mode');
@@ -214,14 +215,14 @@
 
   function updateCharCount() { els.charCount.textContent = `${els.prompt.value.length.toLocaleString()} chars`; }
 
-  // ---------------------------------------------------------------- run
+  // ---------------------------------------------------------------- run: one prompt, both modes side by side
   function normalizeResult(r) {
     const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
     const tokens = r && r.tokens && typeof r.tokens === 'object'
       ? { prompt: n(r.tokens.prompt), completion: n(r.tokens.completion), total: n(r.tokens.total) } : null;
     const a = r && r.armor && typeof r.armor === 'object' ? r.armor : {};
     const armor = {
-      mode: ARMOR_MODES.includes(a.mode) ? a.mode : state.armorMode,
+      mode: ARMOR_MODES.includes(a.mode) ? a.mode : 'native',
       verdict: typeof a.verdict === 'string' ? a.verdict.slice(0, 16) : null,
       filters: Array.isArray(a.filters) ? a.filters.filter((f) => typeof f === 'string').map((f) => f.slice(0, 40)) : [],
       latencyMs: n(a.latencyMs),
@@ -239,21 +240,18 @@
     };
   }
 
-  async function postRun(scenarioId, prompt) {
-    const t0 = performance.now();
-    const { res, body } = await fetchJson('/api/run', {
+  /** POST /api/compare: the server sends the prompt through native and callout concurrently. */
+  async function postCompare(scenarioId, prompt) {
+    const { res, body } = await fetchJson('/api/compare', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ scenarioId, prompt, armorMode: state.armorMode }),
+      body: JSON.stringify({ scenarioId, prompt }),
     });
-    const out = body && typeof body === 'object' ? body : { ok: false, verdict: 'error', response: { error: 'Invalid response from demo server' } };
-    if (!out.httpStatus) out.httpStatus = res.status;
-    if (!out.latencyMs) out.latencyMs = Math.round(performance.now() - t0);
-    return out;
+    if (!res.ok || !body || !body.results) throw new Error(body && typeof body.error === 'string' ? body.error : `HTTP ${res.status}`);
+    return body;
   }
 
-  async function mockRun(scenarioId, prompt) {
+  async function mockRun(scenarioId, prompt, mode) {
     const s = state.scenarios.find((x) => x.id === scenarioId);
-    const mode = state.armorMode;
     const hit = s && s.prompt === prompt && s.expect === 'blocked' ? (s.filter || 'pi_and_jailbreak') : null;
     const armorMs = 45 + Math.round(Math.random() * 60) + (mode === 'callout' ? 20 + Math.round(Math.random() * 40) : 0);
     const latencyMs = armorMs + (hit ? 30 : 400 + Math.round(Math.random() * 400));
@@ -269,9 +267,15 @@
         : { text: '(mock) Model Armor found nothing, so Apigee forwarded the prompt to Gemini. Connect the demo server to see a real answer.' },
       requestHeaders: { 'content-type': 'application/json', 'x-armor-mode': mode, 'x-api-key': '***redacted***' },
       responseHeaders: { 'content-type': 'application/json', 'x-armor-mode': mode, 'x-armor-verdict': verdict, 'x-demo-mock': 'true' },
+      input: { kind: 'text', summary: `The prompt text (${prompt.length.toLocaleString()} chars) via ${mode === 'native' ? 'the SanitizeUserPrompt policy' : 'the REST API (userPromptData.text)'} (mock)` },
     };
     state.mockLog.unshift({ ts: new Date().toISOString(), scenarioId, armorMode: mode, armorFilters: hit, httpStatus: result.httpStatus, verdict, latencyMs });
     return result;
+  }
+
+  async function mockCompare(scenarioId, prompt) {
+    const [native, callout] = await Promise.all(ARMOR_MODES.map((m) => mockRun(scenarioId, prompt, m)));
+    return { ok: true, scenarioId, promptChars: prompt.length, results: { native, callout } };
   }
 
   async function run() {
@@ -285,18 +289,21 @@
     }
     const scenarioId = state.selected || 'custom';
     setRunning(true);
-    let raw;
+    let body = null;
     try {
-      raw = state.mock ? await mockRun(scenarioId, prompt) : await postRun(scenarioId, prompt);
-    } catch {
-      raw = { ok: false, verdict: 'error', response: { error: 'Could not reach the demo server.' } };
+      body = state.mock ? await mockCompare(scenarioId, prompt) : await postCompare(scenarioId, prompt);
+    } catch (e) {
+      toast(`Request failed: ${String(e && e.message || e).slice(0, 160)}`, 'error');
     } finally {
       setRunning(false);
     }
-    const result = normalizeResult(raw);
-    renderResult(result);
-    state.lastResult = Object.assign({}, result, { scenarioId });
-    window.dispatchEvent(new CustomEvent('demo:runresult', { detail: Object.assign({}, result, { scenarioId }) }));
+    if (!body) {
+      if (state.lastResult) renderText(state.lastResult); else renderTextEmpty();
+      return null;
+    }
+    state.lastResult = Object.assign({}, body, { scenarioId });
+    renderText(state.lastResult);
+    window.dispatchEvent(new CustomEvent('demo:runresult', { detail: state.lastResult }));
     if (isAdminOpen()) loadLogs();
     return state.lastResult;
   }
@@ -305,24 +312,33 @@
     state.running = on;
     els.runBtn.disabled = on;
     els.runSpinner.hidden = !on;
-    if (on) {
-      setPill('running', 'Running');
-      setBanner('running', '⏳', 'Screening the prompt…', `Apigee is calling Model Armor (${MODE_LABEL[state.armorMode]} mode).`);
-      renderFilters(null);
-      els.latency.textContent = '…';
-    }
+    if (!on) return;
+    els.textSummary.hidden = true;
+    els.textGrid.replaceChildren(...runningColumns('Screening the prompt…', {
+      native: 'Apigee is calling the SanitizeUserPrompt policy.',
+      callout: 'Apigee is calling the Model Armor REST API (ServiceCallout).',
+    }));
   }
 
-  function setPill(kind, text) {
-    els.statusPill.className = `status-pill status-${kind}`;
-    els.statusPill.textContent = text;
+  function renderText(body) {
+    const results = body.results || {};
+    els.textGrid.replaceChildren(...ARMOR_MODES.map((mode) => compareColumn(mode, results[mode] || { verdict: 'error', response: { error: 'No result' } })));
+    renderSummary(els.textSummary, results);
   }
 
-  function setBanner(kind, icon, title, desc) {
-    els.banner.className = `verdict-banner v-${kind}`;
-    els.bannerIcon.textContent = icon;
-    els.bannerTitle.textContent = title;
-    els.bannerDesc.textContent = desc;
+  /** Text view before the first run: a short how-to instead of an empty card. */
+  function renderTextEmpty() {
+    els.textSummary.hidden = true;
+    els.textGrid.replaceChildren(el('div', { class: 'empty-state compare-empty' }, [
+      el('div', { class: 'empty-icon', text: '💬' }),
+      el('p', { text: 'Pick a scenario or type a prompt, then press "Screen with both modes".' }),
+      el('p', { class: 'compare-empty-sub', text: 'The same prompt goes through the native SanitizeUserPrompt policy and the ServiceCallout to the Model Armor REST API at the same time. Results appear side by side here.' }),
+    ]));
+  }
+
+  function resetResult() {
+    state.lastResult = null;
+    renderTextEmpty();
   }
 
   /** Best-effort extraction of display text from common LLM/API response shapes. */
@@ -338,10 +354,10 @@
     return JSON.stringify(resp, null, 2);
   }
 
-  /** [kind, icon, title, desc] for a normalized result. Shared by the main card and the compare card. */
+  /** [kind, icon, title, desc] for a normalized result. Used by every compare column. */
   function bannerFor(r) {
     const how = r.armor.mode === 'callout' ? 'the Model Armor REST API (ServiceCallout)' : 'the native SanitizeUserPrompt policy';
-    const names = r.armor.filters.map((f) => FILTER_LABEL[f.split(':')[0]] ? `${FILTER_LABEL[f.split(':')[0]]}${f.includes(':') ? ` (${f.split(':')[1]})` : ''}` : f);
+    const names = r.armor.filters.map(filterName);
     const err = r.response && typeof r.response === 'object' && r.response.error && typeof r.response.error === 'object' ? r.response.error : null;
     if (r.verdict === 'allowed') return ['allowed', '✅', 'Clean: forwarded to Gemini', `Model Armor found nothing via ${how}.`];
     if (r.verdict === 'blocked' && names.length) return ['blocked', '⛔', `Blocked by Model Armor: ${names.join(', ')}`, `HTTP ${r.httpStatus} • caught by ${how}; Gemini was never called.`];
@@ -351,79 +367,39 @@
     return ['error', '❌', 'Request failed', r.httpStatus ? `HTTP ${r.httpStatus}` : 'No response from the demo server.'];
   }
 
-  function renderResult(r) {
-    const PILL = { allowed: ['success', 'Allowed'], blocked: ['blocked', 'Blocked'], error: ['blocked', 'Error'] };
-    setPill(...PILL[r.verdict]);
-    els.latency.textContent = fmtMs(r.latencyMs);
-    els.metricHttp.textContent = r.httpStatus ? String(r.httpStatus) : '--';
-    els.metricHttp.className = `metric-val ${r.httpStatus >= 200 && r.httpStatus < 300 ? 'ok' : r.httpStatus ? 'bad' : ''}`;
-    els.metricMode.textContent = MODE_LABEL[r.armor.mode] || '--';
-    els.metricArmorMs.textContent = fmtMs(r.armor.latencyMs);
-    els.metricTotal.textContent = fmtInt(r.tokens ? r.tokens.total : NaN);
-    renderFilters(r);
-    setBanner(...bannerFor(r));
-
-    const text = responseText(r.response);
-    els.responseBody.replaceChildren(text ? document.createTextNode(text) : emptyState());
-    els.rawResponse.textContent = JSON.stringify(r.response ?? null, null, 2);
-    els.rawReqHeaders.textContent = JSON.stringify(r.requestHeaders, null, 2);
-    els.rawResHeaders.textContent = JSON.stringify(r.responseHeaders, null, 2);
-    els.reqHeaderCount.textContent = String(Object.keys(r.requestHeaders).length);
-    els.resHeaderCount.textContent = String(Object.keys(r.responseHeaders).length);
+  function filterName(f) {
+    const [base, sub] = f.split(':');
+    return FILTER_LABEL[base] ? `${FILTER_LABEL[base]}${sub ? ` (${sub})` : ''}` : f;
   }
 
-  /** Chips: grey = not run yet, green = checked and clean, red = matched. */
-  function renderFilters(r) {
-    const hits = new Set(r ? r.armor.filters.map((f) => f.split(':')[0]) : []);
-    const checked = !!(r && (r.verdict === 'allowed' || (r.verdict === 'blocked' && hits.size)));
-    els.filterRow.querySelectorAll('.filter-chip').forEach((c) => {
-      const hit = hits.has(c.dataset.filter);
-      c.classList.toggle('hit', hit);
-      c.classList.toggle('pass', checked && !hit);
-    });
+  /** One-line comparison above the two columns: same verdict? which path was faster? */
+  function renderSummary(box, results) {
+    const raw = ARMOR_MODES.map((m) => results && results[m]);
+    if (raw.some((r) => !r || r.skipped)) { box.hidden = true; return; }
+    const [nat, cal] = raw.map((r, i) => normalizeResult(Object.assign({}, r, { armor: Object.assign({ mode: ARMOR_MODES[i] }, r.armor) })));
+    const same = nat.verdict === cal.verdict;
+    const VERB = { allowed: 'allowed', blocked: 'blocked', error: 'error' };
+    let headline = same ? `Same verdict in both modes: ${VERB[nat.verdict]}` : `Different verdicts: native ${VERB[nat.verdict]}, callout ${VERB[cal.verdict]}`;
+    const key = (r) => r.armor.filters.map((f) => f.split(':')[0]).sort().join(',');
+    if (same && nat.verdict === 'blocked' && key(nat) !== key(cal)) headline += ' (matched filters differ)';
+    const parts = [el('strong', { text: `${same ? '✔' : '≠'} ${headline}` })];
+    const a = nat.armor.latencyMs, b = cal.armor.latencyMs;
+    if (Number.isFinite(a) && a > 0 && Number.isFinite(b) && b > 0) {
+      const d = Math.round(b - a);
+      parts.push(el('span', { class: 'compare-summary-ms', text: `Model Armor check: native ${fmtMs(a)} · callout ${fmtMs(b)} (${d >= 0 ? '+' : '−'}${Math.abs(d).toLocaleString()} ms for the callout)` }));
+    }
+    box.className = `compare-summary ${same ? 'same' : 'diff'}`;
+    box.replaceChildren(...parts);
+    box.hidden = false;
   }
 
-  function setArmorMode(mode) {
-    if (!ARMOR_MODES.includes(mode)) return false;
-    state.armorMode = mode;
-    store.set('armorMode', mode);
-    els.modeGroup.querySelectorAll('.mode-btn').forEach((b) => {
-      const on = b.dataset.mode === mode;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-checked', String(on));
-      b.tabIndex = on ? 0 : -1;
-    });
-    return true;
-  }
-
-  function initModeToggle() {
-    const btns = Array.from(els.modeGroup.querySelectorAll('.mode-btn'));
-    btns.forEach((b) => {
-      b.addEventListener('click', () => setArmorMode(b.dataset.mode));
-      b.addEventListener('keydown', (e) => {
-        if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
-        e.preventDefault();
-        const next = btns[(btns.indexOf(b) + 1) % btns.length];
-        setArmorMode(next.dataset.mode);
-        next.focus();
-      });
-    });
-    setArmorMode(state.armorMode);
-  }
-
-  function emptyState() {
-    return el('div', { class: 'empty-state' }, [el('div', { class: 'empty-icon', text: '💬' }), el('p', { text: 'The gateway response will appear here.' })]);
-  }
-
-  function resetResult() {
-    setPill('idle', 'Idle');
-    setBanner('idle', '🛡️', 'Waiting for a request', 'Pick a scenario on the left and press Send.');
-    els.latency.textContent = '0 ms';
-    renderFilters(null);
-    ['metricHttp', 'metricMode', 'metricArmorMs', 'metricTotal'].forEach((k) => { els[k].textContent = '--'; els[k].className = 'metric-val'; });
-    els.responseBody.replaceChildren(emptyState());
-    els.rawResponse.textContent = els.rawReqHeaders.textContent = els.rawResHeaders.textContent = '{}';
-    els.reqHeaderCount.textContent = els.resHeaderCount.textContent = '0';
+  /** Placeholder columns while a request is in flight (text and document views). */
+  function runningColumns(title, descByMode) {
+    return ARMOR_MODES.map((mode) => el('div', { class: 'compare-col' }, [
+      compareHead(mode, 'running', 'Running'),
+      el('div', { class: 'verdict-banner v-running' }, [el('span', { class: 'verdict-icon', 'aria-hidden': 'true', text: '⏳' }),
+        el('div', {}, [el('div', { class: 'verdict-title', text: title }), el('div', { class: 'verdict-desc', text: descByMode[mode] })])]),
+    ]));
   }
 
   // ---------------------------------------------------------------- document upload (both modes)
@@ -521,6 +497,7 @@
   function renderUploadEmpty() {
     els.uploadFileLine.textContent = 'POST /api/upload';
     els.extractDetails.hidden = true;
+    els.uploadSummary.hidden = true;
     els.compareGrid.replaceChildren(el('div', { class: 'empty-state compare-empty' }, [
       el('div', { class: 'empty-icon', text: '📄' }),
       el('p', { text: 'Pick a sample CV (Use) or choose a file, then press "Screen with both modes".' }),
@@ -536,12 +513,11 @@
     if (!on) return;
     els.uploadFileLine.textContent = `POST /api/upload · ${file.name.slice(0, 80)} · ${fmtBytes(file.size)}`;
     els.extractDetails.hidden = true;
-    els.compareGrid.replaceChildren(...ARMOR_MODES.map((mode) => el('div', { class: 'compare-col' }, [
-      compareHead(mode, 'running', 'Running'),
-      el('div', { class: 'verdict-banner v-running' }, [el('span', { class: 'verdict-icon', 'aria-hidden': 'true', text: '⏳' }),
-        el('div', {}, [el('div', { class: 'verdict-title', text: 'Screening the document…' }),
-          el('div', { class: 'verdict-desc', text: mode === 'native' ? 'Extracting text, then calling SanitizeUserPrompt.' : 'Sending the raw file to Model Armor.' })])]),
-    ])));
+    els.uploadSummary.hidden = true;
+    els.compareGrid.replaceChildren(...runningColumns('Screening the document…', {
+      native: 'Extracting text, then calling SanitizeUserPrompt.',
+      callout: 'Sending the raw file to Model Armor.',
+    }));
   }
 
   function compareHead(mode, pillKind, pillText) {
@@ -597,6 +573,7 @@
     els.uploadFileLine.textContent = `POST /api/upload · ${String(f.name || 'file').slice(0, 80)} · ${fmtBytes(n(f.bytes))} · ${n(f.extractedChars).toLocaleString()} chars of text extracted`;
     const results = u.results || {};
     els.compareGrid.replaceChildren(...ARMOR_MODES.map((mode) => compareColumn(mode, results[mode] || { verdict: 'error', response: { error: 'No result' } })));
+    renderSummary(els.uploadSummary, results);
     const text = typeof f.extractedText === 'string' ? f.extractedText : '';
     els.extractText.textContent = text
       ? `${text}${f.extractedTruncated ? '\n\n… (preview truncated)' : ''}`
@@ -700,7 +677,7 @@
   // ---------------------------------------------------------------- left sections (accordion) + right view
   /**
    * One mode on screen at a time:
-   *   'text' -> left "Screen texts"   + right #resultCard   (Gateway Response & Telemetry)
+   *   'text' -> left "Screen texts"   + right #resultCard   (Text screening: native vs callout)
    *   'doc'  -> left "Screen a document"  + right #uploadResultCard (Document screening)
    * Opening a section closes the other one and switches the right pane. Folding a section keeps the view.
    */
@@ -921,13 +898,8 @@
       brandTitle: $('brandTitle'), gatewayDot: $('gatewayDot'), gatewayText: $('gatewayText'),
       scenarioList: $('scenarioList'), prompt: $('promptInput'), charCount: $('charCount'), scenarioExpect: $('scenarioExpect'),
       runBtn: $('runBtn'), runSpinner: $('runSpinner'), endpointPath: $('endpointPath'),
-      statusPill: $('statusPill'), latency: $('latencyValue'),
-      metricHttp: $('metricHttp'), metricMode: $('metricMode'), metricArmorMs: $('metricArmorMs'), metricTotal: $('metricTotal'),
-      filterRow: $('filterRow'), modeGroup: $('armorModeGroup'),
+      textGrid: $('textCompareGrid'), textSummary: $('textSummary'), uploadSummary: $('uploadSummary'),
       templateLink: $('armorTemplateLink'), templateId: $('armorTemplateId'),
-      banner: $('verdictBanner'), bannerIcon: $('verdictIcon'), bannerTitle: $('verdictTitle'), bannerDesc: $('verdictDesc'),
-      responseBody: $('responseBody'), rawResponse: $('rawResponse'), rawReqHeaders: $('rawReqHeaders'), rawResHeaders: $('rawResHeaders'),
-      reqHeaderCount: $('reqHeaderCount'), resHeaderCount: $('resHeaderCount'),
       footerHost: $('footerHost'), footerBasepath: $('footerBasepath'),
       archModal: $('archModal'), drawer: $('adminDrawer'), drawerBackdrop: $('adminDrawerBackdrop'), adminTab: $('adminTab'),
       auditSearch: $('auditSearch'), toasts: $('toastContainer'),
@@ -965,7 +937,7 @@
 
     initSplitter();
     initArch();
-    initModeToggle();
+    renderTextEmpty();
     initUpload();
     initSamples();
     initCollapsibles();
@@ -974,9 +946,8 @@
 
     window.demoApp = {
       slug: SLUG,
-      loadScenario, run, setArmorMode, runUpload, useSample, setSectionOpen, setView,
+      loadScenario, run, runUpload, useSample, setSectionOpen, setView,
       currentView: () => currentView,
-      armorMode: () => state.armorMode,
       isRunning: () => state.running || upload.running,
       scenarios: () => state.scenarios.slice(),
       selectedScenario: () => state.selected,
