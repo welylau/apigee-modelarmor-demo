@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="true" enabled="true" name="AM-Error-Default">
+    <DisplayName>Sanitized JSON Error</DisplayName>
+    <!-- Keeps the fault's HTTP status; never echoes upstream bodies (may contain prompt text).
+         "code" stays a quoted string on purpose: if error.status.code is unset, an unquoted
+         value would render as "code":, (invalid JSON) because unresolved variables become empty. -->
+    <Set>
+        <Headers>
+            <Header name="Content-Type">application/json</Header>
+            <Header name="X-Request-Id">{messageid}</Header>
+        </Headers>
+        <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"code":"@error.status.code#","status":"@fault.name#","message":"The gateway could not complete the request.","requestId":"@messageid#"}}</Payload>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="response"/>
+</AssignMessage>

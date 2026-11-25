@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Javascript continueOnError="false" enabled="true" timeLimit="200" name="JS-Evaluate-Armor">
-    <DisplayName>Model Armor Verdict</DisplayName>
-    <Properties>
-        <!-- Filters enabled on the template; each must report EXECUTION_SUCCESS or the prompt is not forwarded. -->
-        <Property name="requiredFilters">rai,sdp,pi_and_jailbreak,malicious_uris</Property>
-    </Properties>
-    <ResourceURL>jsc://evaluate-armor.js</ResourceURL>
-</Javascript>

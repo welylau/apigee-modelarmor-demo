@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<SanitizeUserPrompt continueOnError="false" enabled="true" name="SUP-MM-Native-Prompt">
+    <DisplayName>Model Armor: Sanitize User Prompt (native, text only)</DisplayName>
+    <!-- Built-in policy: screens the text part. It has no input for images or documents. -->
+    <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+    <ModelArmor>
+        <TemplateName>projects/{propertyset.demo.armor_project}/locations/{propertyset.demo.armor_location}/templates/{propertyset.demo.armor_template_inspect}</TemplateName>
+    </ModelArmor>
+    <UserPromptSource>{private.mm.native_text}</UserPromptSource>
+</SanitizeUserPrompt>

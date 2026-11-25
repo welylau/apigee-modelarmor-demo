@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Javascript continueOnError="false" enabled="true" timeLimit="1000" name="JS-Native-Evaluate">
+    <DisplayName>Native Policy Results (same shape as the callout path)</DisplayName>
+    <Properties>
+        <Property name="requiredFilters">rai,sdp,pi_and_jailbreak,malicious_uris</Property>
+    </Properties>
+    <IncludeURL>jsc://armor-lib.js</IncludeURL>
+    <ResourceURL>jsc://native-evaluate.js</ResourceURL>
+</Javascript>

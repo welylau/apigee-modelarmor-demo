@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="false" enabled="true" name="AM-Set-Target-URL">
+    <DisplayName>Set Vertex AI Target URL (chat or image model)</DisplayName>
+    <!-- mm.model is set by JS-Split-Parts: property model (POST /generate) or image_model (POST /generate-image). -->
+    <AssignVariable>
+        <Name>target.url</Name>
+        <Template>https://{propertyset.demo.vertex_host}/v1/projects/{propertyset.demo.vertex_project}/locations/{propertyset.demo.vertex_location}/publishers/google/models/{mm.model}:generateContent</Template>
+    </AssignVariable>
+    <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+</AssignMessage>

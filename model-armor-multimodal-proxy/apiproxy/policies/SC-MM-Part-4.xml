@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ServiceCallout continueOnError="false" enabled="true" name="SC-MM-Part-4">
+    <DisplayName>Model Armor: sanitizeUserPrompt, part 4</DisplayName>
+    <!-- Part 4 of the prompt (text, or one image / document as a byteItem). Model Armor screens one item per call.
+         Non-2xx or timeout -> FaultRule "mm-unavailable" (503, fail closed). -->
+    <Request variable="mmArmorResp4Req" clearPayload="true">
+        <Set>
+            <Headers>
+                <Header name="Content-Type">application/json</Header>
+            </Headers>
+            <Payload contentType="application/json">{private.mm.part4.body}</Payload>
+            <Verb>POST</Verb>
+        </Set>
+        <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+    </Request>
+    <Response>mmArmorResp4</Response>
+    <!-- Images and documents usually take 1.5-4 s each (Model Armor runs OCR / parses the file), with spikes
+         past 20 s seen live. Worst case per request: 4 x 25 s (prompt parts) + 120 s (Gemini) + 20 s (answer text)
+         + 30 s (answer image, redaction is slower) = 270 s, under the 300 s Cloud Run timeout. -->
+    <Timeout>25000</Timeout>
+    <HTTPTargetConnection>
+        <!-- Token of the proxy's deployment service account (needs roles/modelarmor.user). -->
+        <Authentication>
+            <GoogleAccessToken>
+                <Scopes>
+                    <Scope>https://www.googleapis.com/auth/cloud-platform</Scope>
+                </Scopes>
+            </GoogleAccessToken>
+        </Authentication>
+        <!-- Multi-region endpoint: image screening needs us / eu / global (not us-central1). -->
+        <URL>https://modelarmor.{propertyset.demo.armor_location}.rep.googleapis.com/v1/projects/{propertyset.demo.armor_project}/locations/{propertyset.demo.armor_location}/templates/{propertyset.demo.armor_template_inspect}:sanitizeUserPrompt</URL>
+    </HTTPTargetConnection>
+</ServiceCallout>

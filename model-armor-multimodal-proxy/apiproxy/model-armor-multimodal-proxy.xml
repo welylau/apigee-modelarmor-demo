@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<APIProxy revision="1" name="model-armor-multimodal-proxy">
+    <Basepaths>/model-armor-multimodal</Basepaths>
+    <ConfigurationVersion majorVersion="4" minorVersion="0"/>
+    <DisplayName>model-armor-multimodal-proxy</DisplayName>
+    <Description>Model Armor multimodal: every prompt part (text, image, PDF, Word, Excel, PowerPoint) and every answer part (text, generated image) screened through the Model Armor REST API (callout mode, the default); response images blocked or redacted</Description>
+    <Policies>
+        <Policy>AM-Error-Default</Policy>
+        <Policy>AM-Error-MM-Blocked</Policy>
+        <Policy>AM-Error-MM-Unavailable</Policy>
+        <Policy>AM-Error-MM-Unsupported</Policy>
+        <Policy>AM-Error-Unauthenticated</Policy>
+        <Policy>AM-MM-Headers</Policy>
+        <Policy>AM-MM-Init</Policy>
+        <Policy>AM-MM-Mark-1</Policy>
+        <Policy>AM-MM-Mark-2</Policy>
+        <Policy>AM-MM-Mark-3</Policy>
+        <Policy>AM-MM-Mark-4</Policy>
+        <Policy>AM-MM-Prompt-Incomplete</Policy>
+        <Policy>AM-MM-Response-Incomplete</Policy>
+        <Policy>AM-MM-Stage-Response</Policy>
+        <Policy>AM-Prepare-Gemini-Request</Policy>
+        <Policy>AM-Set-Target-URL</Policy>
+        <Policy>JS-Apply-Response</Policy>
+        <Policy>JS-Evaluate-Parts</Policy>
+        <Policy>JS-Native-Evaluate</Policy>
+        <Policy>JS-Split-Parts</Policy>
+        <Policy>JS-Split-Response</Policy>
+        <Policy>ML-Log-Audit</Policy>
+        <Policy>RF-Bad-Request</Policy>
+        <Policy>RF-MM-Blocked</Policy>
+        <Policy>RF-MM-Incomplete</Policy>
+        <Policy>RF-MM-Unsupported</Policy>
+        <Policy>RF-Not-Found</Policy>
+        <Policy>SC-MM-Part-1</Policy>
+        <Policy>SC-MM-Part-2</Policy>
+        <Policy>SC-MM-Part-3</Policy>
+        <Policy>SC-MM-Part-4</Policy>
+        <Policy>SC-MM-Resp-Image</Policy>
+        <Policy>SC-MM-Resp-Text</Policy>
+        <Policy>SMR-MM-Native-Response</Policy>
+        <Policy>SUP-MM-Native-Prompt</Policy>
+        <Policy>VA-Verify-API-Key</Policy>
+    </Policies>
+    <ProxyEndpoints>
+        <ProxyEndpoint>default</ProxyEndpoint>
+    </ProxyEndpoints>
+    <Resources>
+        <Resource>properties://demo.properties</Resource>
+        <Resource>jsc://armor-lib.js</Resource>
+        <Resource>jsc://split-parts.js</Resource>
+        <Resource>jsc://evaluate-parts.js</Resource>
+        <Resource>jsc://split-response.js</Resource>
+        <Resource>jsc://apply-response.js</Resource>
+        <Resource>jsc://native-evaluate.js</Resource>
+    </Resources>
+    <TargetEndpoints>
+        <TargetEndpoint>default</TargetEndpoint>
+    </TargetEndpoints>
+</APIProxy>

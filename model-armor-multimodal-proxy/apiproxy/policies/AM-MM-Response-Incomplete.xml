@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="true" enabled="true" name="AM-MM-Response-Incomplete">
+    <DisplayName>Mark Response Verdict Incomplete</DisplayName>
+    <AssignVariable>
+        <Name>mm.resp_verdict</Name>
+        <Value>incomplete</Value>
+    </AssignVariable>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</AssignMessage>

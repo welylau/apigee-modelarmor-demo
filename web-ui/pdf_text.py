@@ -18,18 +18,40 @@ _REF_RE = re.compile(rb"(\d+)\s+\d+\s+R")
 _WS = b" \t\r\n\f\x00"
 _DELIM = b"()<>[]{}/%"
 _MAX_STREAM_OUT = 20 * 1024 * 1024  # decompression-bomb guard per stream
+_MAX_DOC_INFLATED = 40 * 1024 * 1024  # ... and for all streams of one document together
+_MAX_CMAP_ENTRIES = 200_000           # ToUnicode entries across all fonts (bfrange expansion guard)
 
 
 class PdfError(Exception):
     pass
 
 
-def _inflate(raw):
+class _Budget:
+    """Per-document resource counters. Exceeding one stops extraction with a PdfError."""
+
+    def __init__(self):
+        self.inflated = 0
+        self.cmap_entries = 0
+
+    def add_inflated(self, n):
+        self.inflated += n
+        if self.inflated > _MAX_DOC_INFLATED:
+            raise PdfError(f"the PDF expands to more than {_MAX_DOC_INFLATED // (1024 * 1024)} MB of streams")
+
+    def add_cmap(self, n=1):
+        self.cmap_entries += n
+        if self.cmap_entries > _MAX_CMAP_ENTRIES:
+            raise PdfError("the PDF's font maps are too large")
+
+
+def _inflate(raw, budget=None):
     d = zlib.decompressobj()
     try:
         out = d.decompress(raw, _MAX_STREAM_OUT)
     except zlib.error:
         return None
+    if budget is not None:
+        budget.add_inflated(len(out))
     return out
 
 
@@ -52,22 +74,22 @@ def _split_stream(body):
     return head, raw
 
 
-def _decode_stream(head, raw):
+def _decode_stream(head, raw, budget=None):
     if raw is None:
         return None
     if b"/Filter" not in head:
         return raw
     filters = re.findall(rb"/(FlateDecode|Fl|DCTDecode|JPXDecode|ASCIIHexDecode|ASCII85Decode|LZWDecode|CCITTFaxDecode|JBIG2Decode|RunLengthDecode)\b", head)
     if filters and all(f in (b"FlateDecode", b"Fl") for f in filters):
-        return _inflate(raw)
+        return _inflate(raw, budget)
     return None  # images or filters we don't need for text
 
 
-def _load_objects(data):
+def _load_objects(data, budget=None):
     objs = {}  # num -> (dict_bytes, decoded_stream|None)
     for m in _OBJ_RE.finditer(data):
         head, raw = _split_stream(m.group(3))
-        objs[int(m.group(1))] = (head, _decode_stream(head, raw))
+        objs[int(m.group(1))] = (head, _decode_stream(head, raw, budget))
     # Object streams: objects packed inside a compressed stream (no nested streams allowed).
     for head, stream in list(objs.values()):
         if stream is None or b"/ObjStm" not in head:
@@ -99,11 +121,13 @@ def _utf16(b):
         return ""
 
 
-def _parse_cmap(stream):
+def _parse_cmap(stream, budget=None):
     """ToUnicode CMap -> ({code_bytes: str}, code_lengths)."""
+    budget = budget or _Budget()
     cmap, lengths = {}, set()
     for block in re.findall(rb"beginbfchar(.*?)endbfchar", stream, re.S):
         for src, dst in re.findall(rb"<([0-9A-Fa-f\s]+)>\s*<([0-9A-Fa-f\s]*)>", block):
+            budget.add_cmap()
             k = _hex_bytes(src)
             cmap[k] = _utf16(_hex_bytes(dst))
             lengths.add(len(k))
@@ -114,6 +138,7 @@ def _parse_cmap(stream):
             a, z = int.from_bytes(lo_b, "big"), int.from_bytes(hi_b, "big")
             if z < a or z - a > 65535:
                 continue
+            budget.add_cmap(z - a + 1)
             lengths.add(width)
             if dst.startswith(b"["):
                 for off, item in enumerate(re.findall(rb"<([0-9A-Fa-f\s]*)>", dst)):
@@ -121,12 +146,15 @@ def _parse_cmap(stream):
             else:
                 base = _hex_bytes(dst[1:-1])
                 start = int.from_bytes(base, "big") if base else 0
+                dst_width = max(2, len(base))
+                if start + (z - a) >= 1 << (8 * dst_width):
+                    continue  # malformed range: destination would overflow its width
                 for off in range(z - a + 1):
-                    cmap[(a + off).to_bytes(width, "big")] = _utf16((start + off).to_bytes(max(2, len(base)), "big"))
+                    cmap[(a + off).to_bytes(width, "big")] = _utf16((start + off).to_bytes(dst_width, "big"))
     return cmap, sorted(lengths, reverse=True) or [1]
 
 
-def _font_maps(objs):
+def _font_maps(objs, budget=None):
     """Font resource name (e.g. b'F1') -> (cmap, lengths) | codec name. Name collisions across pages: last wins."""
     fonts = {}
     for num, (head, _s) in objs.items():
@@ -135,7 +163,7 @@ def _font_maps(objs):
         m = re.search(rb"/ToUnicode\s+(\d+)\s+\d+\s+R", head)
         target = objs.get(int(m.group(1))) if m else None
         if target and target[1]:
-            fonts[num] = _parse_cmap(target[1])
+            fonts[num] = _parse_cmap(target[1], budget)
             continue
         enc = head
         em = re.search(rb"/Encoding\s+(\d+)\s+\d+\s+R", head)
@@ -313,10 +341,11 @@ def extract_text(data, max_chars=200_000):
         raise PdfError("not a PDF file")
     if re.search(rb"/Encrypt\s", data):
         raise PdfError("encrypted PDFs are not supported")
-    objs = _load_objects(data)
+    budget = _Budget()
+    objs = _load_objects(data, budget)
     if not objs:
         raise PdfError("no PDF objects found")
-    fonts = _font_maps(objs)
+    fonts = _font_maps(objs, budget)
 
     # Page content streams in page-object order, then any other text-bearing streams (form XObjects).
     order, seen = [], set()

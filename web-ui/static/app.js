@@ -1,29 +1,39 @@
 /**
- * Model Armor 101 - Apigee demo WebUI controller (vanilla JS, no framework).
+ * Model Armor and Apigee Demo - WebUI controller (vanilla JS, no framework).
  *
  * Loaded synchronously in <head>: applies the saved theme before first paint, then wires the
  * DOM on DOMContentLoaded. Never handles secrets: the browser only talks to this app's /api/*.
  *
- * Backend contract
- *   GET  /api/config        -> {title, apigeeHost, proxyBasepath, apiKeyConfigured, scenarios:[{id,label,description,prompt,expect}]}
+ * Backend contract (every POST sends Content-Type: application/json; the server answers 415 otherwise,
+ * and 403 to cross-site requests)
+ *   GET  /api/config        -> {title, subtitle, apigeeHost, proxyBasepath, model, mock, apiKeyConfigured, armorModes,
+ *                               armorTemplate:{id, location, consoleUrl}|null, maxPromptChars,
+ *                               scenarios:[{id,label,description,prompt,expect,filter}],
+ *                               upload:{maxBytes, extensions, nativeMaxChars},
+ *                               multimodal:{basepath, scenarios, extensions, maxFiles, maxFileBytes, maxTotalBytes, maxPromptChars}}
  *   POST /api/compare       body {scenarioId, prompt} -> {ok, scenarioId, promptChars,
  *                           results:{native:<run result + input>, callout:<run result + input>}}
  *                           run result = {ok, httpStatus, latencyMs, tokens:{prompt,completion,total}|null,
  *                               verdict:'allowed'|'blocked'|'error', armor:{mode, verdict, filters[], latencyMs},
  *                               response, requestHeaders, responseHeaders}
  *   POST /api/run           same, one mode only (body armorMode); not used by this UI
- *   GET  /api/admin/logs    -> {entries:[{ts, scenarioId, httpStatus, verdict, latencyMs}]}
- *   POST /api/admin/refresh
+ *   GET  /api/admin/logs    -> {entries:[{ts, scenarioId, armorMode, armorFilters, httpStatus, verdict, latencyMs, source}],
+ *                               logId, lastSync, lastSyncError}
+ *   POST /api/admin/refresh body {} -> pulls the proxy's Cloud Logging entries, then same as /api/admin/logs
  *   POST /api/upload        body {filename, dataBase64} -> {ok, file:{name, bytes, extractedChars, extractedText, ...},
  *                           results:{native:<run result + input>, callout:<run result + input>}}
  *                           (native = server-extracted text via SanitizeUserPrompt; callout = raw file via ServiceCallout)
+ *   POST /api/multimodal    body {flow, prompt, files:[{name, dataBase64}], imageAction, scenarioId} (used by mm.js)
+ *                           -> {ok, httpStatus, verdict, stage, parts[], response, text, image, ...}
  *
  * Integration surface for optional add-ons (tour/, present/ feature-detect this; app.js never needs them)
  *   window.demoApp                        facade (see bottom of file)
  *   window 'demo:ready'                   facade available, scenarios rendered (fallback list at first)
  *   window 'demo:configloaded'            /api/config applied (scenarios may have changed)
  *   window 'demo:runresult'               detail = /api/compare body + {scenarioId} after every text run
- *   window 'demo:uploadresult'            detail = /api/upload body after every document screening
+ *   window 'demo:uploadresult'            detail = /api/upload body + {scenarioId: 'doc-<sample>'|'file-upload'} after every document screening
+ *   window 'demo:mmresult'                detail = /api/multimodal body after every multimodal run (mm.js)
+ *   window 'demo:archopen'                architecture modal opened
  *   window 'demo:themechange'             detail {theme}
  *
  * Offline: on file:// or with ?mock=1 (or when /api/config is unreachable) runs are simulated locally
@@ -65,7 +75,7 @@
       prompt: 'My card number is 4111 1111 1111 1111, expiry 12/29. Can you tell me which bank issued it?', expect: 'blocked', filter: 'sdp' },
   ];
   const ARMOR_MODES = ['native', 'callout'];
-  const MODE_LABEL = { native: 'Native', callout: 'Callout' };
+  const MODE_LABEL = { native: 'Native', callout: 'Callout', 'mm-callout': 'Multimodal' };
   const FILTER_LABEL = { rai: 'Responsible AI', pi_and_jailbreak: 'Prompt injection', malicious_uris: 'Malicious URL', sdp: 'Sensitive data', csam: 'CSAM' };
   const VERDICTS = ['allowed', 'blocked', 'error'];
   const params = new URLSearchParams(window.location.search);
@@ -78,6 +88,7 @@
     mockLog: [],
     lastResult: null,
     logs: [],
+    maxPromptChars: 4000,   // server MAX_PROMPT_CHARS; replaced by /api/config maxPromptChars
   };
   const els = {};
   const $ = (id) => document.getElementById(id);
@@ -122,7 +133,7 @@
       id: s.id.slice(0, 64),
       label: String(s.label || s.id).slice(0, 80),
       description: String(s.description || '').slice(0, 240),
-      prompt: String(s.prompt || '').slice(0, 8000),
+      prompt: String(s.prompt || '').slice(0, state.maxPromptChars),
       expect: VERDICTS.includes(s.expect) ? s.expect : (s.expect ? String(s.expect).slice(0, 40) : ''),
       filter: typeof s.filter === 'string' ? s.filter.slice(0, 40) : null,
     };
@@ -153,6 +164,12 @@
         proxyBasepath: String(cfg.proxyBasepath || ''),
         apiKeyConfigured: cfg.apiKeyConfigured === true,
       };
+      const maxChars = Number(cfg.maxPromptChars);
+      if (Number.isInteger(maxChars) && maxChars > 0 && maxChars <= 100000) {
+        state.maxPromptChars = maxChars;
+        els.prompt.maxLength = maxChars;
+        updateCharCount();
+      }
       const list = Array.isArray(cfg.scenarios) ? cfg.scenarios.map(sanitizeScenario).filter(Boolean) : [];
       if (list.length) state.scenarios = list;
       if (state.config.title) els.brandTitle.textContent = state.config.title;
@@ -213,7 +230,20 @@
     return true;
   }
 
-  function updateCharCount() { els.charCount.textContent = `${els.prompt.value.length.toLocaleString()} chars`; }
+  function updateCharCount() {
+    els.charCount.textContent = `${els.prompt.value.length.toLocaleString()} / ${state.maxPromptChars.toLocaleString()} chars`;
+  }
+
+  /** Typing over a preset makes it a custom prompt: drop the chip so the run is audited as 'custom'. */
+  function onPromptInput() {
+    updateCharCount();
+    const s = state.selected && state.scenarios.find((x) => x.id === state.selected);
+    if (s && els.prompt.value !== s.prompt) {
+      state.selected = null;
+      els.scenarioExpect.textContent = '';
+      renderScenarios();
+    }
+  }
 
   // ---------------------------------------------------------------- run: one prompt, both modes side by side
   function normalizeResult(r) {
@@ -408,10 +438,11 @@
     native: { title: 'Native policy', sub: 'SanitizeUserPrompt' },
     callout: { title: 'REST callout', sub: 'ServiceCallout → sanitizeUserPrompt' },
   };
-  const upload = { file: null, running: false, last: null, maxBytes: 1000000 };
+  const upload = { file: null, running: false, last: null, maxBytes: 1000000, scenarioId: 'file-upload' };
   const fmtBytes = (n) => (n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(2)} MB`);
 
-  function pickFile(file) {
+  /** scenarioId: 'doc-<sample id>' for a sample CV, 'file-upload' for the user's own file (sent in 'demo:uploadresult'). */
+  function pickFile(file, scenarioId) {
     if (!file) return false;
     const dot = file.name.lastIndexOf('.');
     const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : '';
@@ -419,6 +450,7 @@
     if (file.size === 0) { toast('That file is empty.', 'warn'); return false; }
     if (file.size > upload.maxBytes) { toast(`File is ${fmtBytes(file.size)}; the limit is ${fmtBytes(upload.maxBytes)}.`, 'warn'); return false; }
     upload.file = file;
+    upload.scenarioId = scenarioId || 'file-upload';
     els.fileMeta.textContent = `${file.name.slice(0, 80)} · ${fmtBytes(file.size)}`;
     els.dropZone.classList.add('has-file');
     els.uploadBtn.disabled = upload.running;
@@ -465,6 +497,7 @@
     setSectionOpen('doc', true);
     if (!upload.file) { toast('Choose a file first.', 'warn'); els.chooseFileBtn.focus(); return null; }
     const file = upload.file;
+    const scenarioId = upload.scenarioId;
     setUploadRunning(true, file);
     let body = null;
     try {
@@ -488,7 +521,7 @@
     if (!body) return null;
     upload.last = body;
     renderUpload(body);
-    window.dispatchEvent(new CustomEvent('demo:uploadresult', { detail: body }));
+    window.dispatchEvent(new CustomEvent('demo:uploadresult', { detail: Object.assign({}, body, { scenarioId }) }));
     if (isAdminOpen()) loadLogs();
     return body;
   }
@@ -523,11 +556,11 @@
   function compareHead(mode, pillKind, pillText) {
     return el('div', { class: 'compare-col-head' }, [
       el('div', { class: 'compare-col-title' }, [el('span', { class: 'mode-title', text: MODE_INFO[mode].title }), el('span', { class: 'mode-sub', text: MODE_INFO[mode].sub })]),
-      el('span', { class: `status-pill status-${pillKind}`, role: 'status', text: pillText }),
+      el('span', { class: `status-pill status-${pillKind}`, text: pillText }),
     ]);
   }
 
-  function compareColumn(mode, raw) {
+  function compareColumn(mode, raw, opts) {
     const r = normalizeResult(Object.assign({}, raw, { armor: Object.assign({ mode }, raw && raw.armor) }));
     const input = raw && raw.input && typeof raw.input === 'object' ? raw.input : {};
     const skipped = !!(raw && raw.skipped);
@@ -546,6 +579,9 @@
 
     const children = [
       compareHead(mode, pillKind, pillText),
+    ];
+    if (opts && opts.diagram) children.push(docFlow(mode, r, skipped, hits));
+    children.push(
       el('div', { class: 'compare-input' }, [el('strong', { text: 'Model Armor saw: ' }), String(input.summary || '—').slice(0, 200)]),
       el('div', { class: 'compare-metrics' }, [
         metric('HTTP', http, r.httpStatus >= 200 && r.httpStatus < 300 ? 'ok' : r.httpStatus ? 'bad' : ''),
@@ -556,7 +592,7 @@
       el('div', { class: 'filter-row' }, chips),
       el('div', { class: `verdict-banner v-${banner[0]}` }, [el('span', { class: 'verdict-icon', 'aria-hidden': 'true', text: banner[1] }),
         el('div', {}, [el('div', { class: 'verdict-title', text: banner[2] }), el('div', { class: 'verdict-desc', text: banner[3] })])]),
-    ];
+    );
     if (!skipped) {
       children.push(el('div', { class: 'compare-response', text: responseText(r.response) || '(empty response)' }));
       children.push(el('details', { class: 'raw-details' }, [
@@ -567,12 +603,42 @@
     return el('div', { class: `compare-col v-${skipped ? 'skipped' : r.verdict}` }, children);
   }
 
+  /**
+   * Live architecture diagram for one document-screening column: the path this mode takes
+   * (demo server -> Apigee -> Model Armor -> Gemini) with the step where the request stopped highlighted.
+   */
+  function docFlow(mode, r, skipped, hits) {
+    const native = mode === 'native';
+    const blocked = !skipped && r.verdict === 'blocked';
+    const allowed = !skipped && r.verdict === 'allowed';
+    const firstHit = hits.size ? FILTER_LABEL[[...hits][0]] || [...hits][0] : '';
+    const armorSub = skipped ? 'not reached' : allowed ? 'clean' : blocked ? `blocked${firstHit ? `: ${firstHit}` : ''}` : (r.httpStatus === 503 ? 'not fully screened' : 'error');
+    const steps = [
+      { label: 'Your app', sub: skipped ? 'too long: not sent' : native ? 'extracts text' : 'sends raw file',
+        cls: skipped ? '' : native ? 'is-key-native' : 'is-key-callout', state: skipped ? 'stop' : '' },
+      { label: 'Apigee', sub: native ? 'native policy' : 'REST callout', cls: 'is-apigee', state: skipped ? 'off' : '' },
+      { label: 'Model Armor', sub: armorSub, cls: 'is-armor', state: skipped ? 'off' : allowed ? 'pass' : 'stop' },
+      { label: 'Gemini', sub: allowed ? 'answered' : 'never called', state: allowed ? 'pass' : 'off' },
+    ];
+    const row = [el('span', { class: 'flow-lane', text: native ? 'Native' : 'Callout' })];
+    steps.forEach((s, i) => {
+      if (i) row.push(el('span', { class: `flow-arrow${s.state === 'off' ? ' is-off' : ''}`, 'aria-hidden': 'true', text: '→' }));
+      row.push(el('span', { class: `flow-box ${s.cls || ''} ${s.state ? `is-${s.state}` : ''}`.trim() }, [s.label, el('span', { class: 'flow-sub', text: s.sub })]));
+    });
+    const summary = skipped
+      ? 'The extracted text was too long, so nothing was sent to Apigee.'
+      : allowed ? `${native ? 'Extracted text' : 'Raw file'} passed Model Armor via Apigee, then Gemini answered.`
+        : blocked ? `${native ? 'Extracted text' : 'Raw file'} was blocked by Model Armor; Gemini was never called.`
+          : `Model Armor could not finish (${r.httpStatus === 503 ? 'not fully screened' : 'error'}); Gemini was never called.`;
+    return el('div', { class: 'flow flow-live', role: 'img', 'aria-label': `${native ? 'Native policy' : 'REST callout'} path: ${summary}` }, [el('div', { class: 'flow-row' }, row)]);
+  }
+
   function renderUpload(u) {
     const f = u.file || {};
     const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
     els.uploadFileLine.textContent = `POST /api/upload · ${String(f.name || 'file').slice(0, 80)} · ${fmtBytes(n(f.bytes))} · ${n(f.extractedChars).toLocaleString()} chars of text extracted`;
     const results = u.results || {};
-    els.compareGrid.replaceChildren(...ARMOR_MODES.map((mode) => compareColumn(mode, results[mode] || { verdict: 'error', response: { error: 'No result' } })));
+    els.compareGrid.replaceChildren(...ARMOR_MODES.map((mode) => compareColumn(mode, results[mode] || { verdict: 'error', response: { error: 'No result' } }, { diagram: true })));
     renderSummary(els.uploadSummary, results);
     const text = typeof f.extractedText === 'string' ? f.extractedText : '';
     els.extractText.textContent = text
@@ -623,15 +689,45 @@
     }));
   }
 
+  let pdfDownloadFn = null;
   function openPdf(id) {
     const s = SAMPLES.find((x) => x.id === id);
     if (!s) return false;
     pdfSample = s;
+    pdfDownloadFn = null;
     pdfOpener = document.activeElement;
     const url = `samples/${encodeURIComponent(s.file)}`;
     els.pdfTitle.textContent = `${s.name} · ${s.role}`;
     els.pdfBadge.textContent = s.kind === 'clean' ? 'Clean' : 'Injection';
     els.pdfNote.textContent = s.note;
+    els.pdfUseBtn.hidden = false;
+    if (els.pdfDownloadBtn) els.pdfDownloadBtn.hidden = true;
+    els.pdfOpenLink.href = url;
+    els.pdfFrame.src = url;
+    els.pdfModal.classList.add('active');
+    els.pdfCloseBtn.focus();
+    return true;
+  }
+
+  /**
+   * Show any PDF (e.g. a Screen any modality attachment or Office preview) in the same viewer.
+   * `url` must be a same-origin blob: URL or a path under samples/; blob URLs are revoked when closed.
+   */
+  let pdfBlobUrl = null;
+  function openPdfFile({ url, title, badge, note, downloadFn, downloadLabel, opener }) {
+    if (typeof url !== 'string' || !(/^blob:/.test(url) || /^samples\//.test(url))) return false;
+    pdfSample = null;
+    pdfDownloadFn = typeof downloadFn === 'function' ? downloadFn : null;
+    pdfOpener = opener || document.activeElement;
+    pdfBlobUrl = url.startsWith('blob:') ? url : null;
+    els.pdfTitle.textContent = String(title || 'PDF').slice(0, 120);
+    els.pdfBadge.textContent = String(badge || 'PDF').slice(0, 40);
+    els.pdfNote.textContent = String(note || '').slice(0, 300);
+    els.pdfUseBtn.hidden = true;
+    if (els.pdfDownloadBtn) {
+      els.pdfDownloadBtn.textContent = String(downloadLabel || '⬇ Download original').slice(0, 40);
+      els.pdfDownloadBtn.hidden = !pdfDownloadFn;
+    }
     els.pdfOpenLink.href = url;
     els.pdfFrame.src = url;
     els.pdfModal.classList.add('active');
@@ -643,6 +739,10 @@
     if (!isPdfOpen()) return;
     els.pdfModal.classList.remove('active');
     els.pdfFrame.src = 'about:blank';
+    pdfDownloadFn = null;
+    if (els.pdfDownloadBtn) els.pdfDownloadBtn.hidden = true;
+    if (pdfBlobUrl) { const u = pdfBlobUrl; pdfBlobUrl = null; setTimeout(() => URL.revokeObjectURL(u), 1000); }
+    syncInert();   // un-inert the page now, or focus() on the opener is ignored
     if (pdfOpener && pdfOpener.focus) pdfOpener.focus();
   }
 
@@ -654,7 +754,7 @@
       const res = await fetch(`samples/${encodeURIComponent(s.file)}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
-      if (!pickFile(new File([blob], s.file, { type: 'application/pdf' }))) return false;
+      if (!pickFile(new File([blob], s.file, { type: 'application/pdf' }), `doc-${s.id}`)) return false;
       toast(`Loaded ${s.name}'s CV. Press "Screen with both modes".`, 'success');
       return true;
     } catch (e) {
@@ -667,6 +767,7 @@
     renderSamples();
     els.pdfCloseBtn.addEventListener('click', closePdf);
     els.pdfModal.addEventListener('click', (e) => { if (e.target === els.pdfModal) closePdf(); });
+    if (els.pdfDownloadBtn) els.pdfDownloadBtn.addEventListener('click', () => { if (pdfDownloadFn) pdfDownloadFn(); });
     els.pdfUseBtn.addEventListener('click', async () => {
       const s = pdfSample;
       closePdf();
@@ -679,9 +780,10 @@
    * One mode on screen at a time:
    *   'text' -> left "Screen texts"   + right #resultCard   (Text screening: native vs callout)
    *   'doc'  -> left "Screen a document"  + right #uploadResultCard (Document screening)
-   * Opening a section closes the other one and switches the right pane. Folding a section keeps the view.
+   *   'mm'   -> left "Screen any modality" + right #mmResultCard (every part, prompt and answer; mm.js)
+   * Opening a section closes the other ones and switches the right pane. Folding a section keeps the view.
    */
-  const SECTION_KEYS = ['text', 'doc'];
+  const SECTION_KEYS = ['text', 'doc', 'mm'];
   let currentView = 'text';
   function sectionToggle(key) { return document.querySelector(`.section-toggle[data-collapse-key="${key}"]`); }
 
@@ -700,7 +802,9 @@
     currentView = view;
     store.set('view', view);
     $('resultCard').hidden = view !== 'text';
-    els.uploadCard.hidden = view !== 'doc';
+    els.uploadResultCard.hidden = view !== 'doc';
+    const mmCard = $('mmResultCard');
+    if (mmCard) mmCard.hidden = view !== 'mm';
     return true;
   }
 
@@ -718,8 +822,9 @@
 
   function initCollapsibles() {
     const saved = store.get('section.active');
-    if (saved === 'none') { SECTION_KEYS.forEach((k) => applySection(k, false)); setView(store.get('view') === 'doc' ? 'doc' : 'text'); }
-    else setSectionOpen(saved === 'doc' ? 'doc' : 'text', true, false);
+    const savedView = store.get('view');
+    if (saved === 'none') { SECTION_KEYS.forEach((k) => applySection(k, false)); setView(SECTION_KEYS.includes(savedView) ? savedView : 'text'); }
+    else setSectionOpen(SECTION_KEYS.includes(saved) ? saved : 'text', true, false);
     SECTION_KEYS.forEach((key) => {
       const btn = sectionToggle(key);
       if (btn) btn.addEventListener('click', () => setSectionOpen(key, btn.getAttribute('aria-expanded') !== 'true'));
@@ -733,14 +838,20 @@
     const DEFAULT = 340, MIN = 260;
     const maxW = () => Math.min(650, Math.floor(window.innerWidth * 0.55));
     const clamp = (w) => Math.max(MIN, Math.min(maxW(), w));
+    const setAria = (v) => {
+      splitter.setAttribute('aria-valuemin', String(MIN));
+      splitter.setAttribute('aria-valuemax', String(maxW()));
+      splitter.setAttribute('aria-valuenow', String(v));
+    };
     const setW = (w, persist) => {
       const v = Math.round(clamp(w));
       left.style.width = `${v}px`;
-      splitter.setAttribute('aria-valuenow', String(v));
+      setAria(v);
       if (persist) store.set('leftWidth', v);
     };
     const saved = parseInt(store.get('leftWidth') || '', 10);
     if (saved && window.innerWidth > 992) setW(saved, false);
+    else setAria(Math.round(left.getBoundingClientRect().width) || DEFAULT);
 
     let dragging = false, startX = 0, startW = 0;
     const move = (x) => { if (dragging) setW(startW + (x - startX), false); };
@@ -778,7 +889,7 @@
     });
     window.addEventListener('resize', () => {
       if (window.innerWidth <= 992) left.style.width = '';
-      else { const w = parseInt(store.get('leftWidth') || '', 10); if (w) setW(w, false); }
+      else { const w = parseInt(store.get('leftWidth') || '', 10); if (w) setW(w, false); else setAria(Math.round(left.getBoundingClientRect().width)); }
     });
   }
 
@@ -794,6 +905,7 @@
   function closeArch() {
     if (!isArchOpen()) return;
     els.archModal.classList.remove('active');
+    syncInert();
     if (archOpener && archOpener.focus) archOpener.focus();
   }
   function initArch() {
@@ -806,6 +918,31 @@
     els.archModal.addEventListener('click', (e) => { if (e.target === els.archModal) closeArch(); });
   }
 
+  // ---------------------------------------------------------------- "Native policy vs REST callout" pop-up (Screen texts ⓘ)
+  let modesOpener = null;
+  const modesModal = () => $('modesModal');
+  const isModesOpen = () => !!(modesModal() && modesModal().classList.contains('active'));
+  function openModes(opener) {
+    if (!modesModal()) return false;
+    modesOpener = opener || document.activeElement;
+    modesModal().classList.add('active');
+    $('modesModalCloseBtn').focus();
+    return true;
+  }
+  function closeModes() {
+    if (!isModesOpen()) return;
+    modesModal().classList.remove('active');
+    syncInert();
+    if (modesOpener && modesOpener.focus) modesOpener.focus();
+  }
+  function initModes() {
+    const m = modesModal();
+    if (!m) return;
+    document.querySelectorAll('[data-modes-info]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); openModes(e.currentTarget); }));
+    $('modesModalCloseBtn').addEventListener('click', closeModes);
+    m.addEventListener('click', (e) => { if (e.target === m) closeModes(); });
+  }
+
   // ---------------------------------------------------------------- admin / audit drawer
   let adminOpener = null;
   const isAdminOpen = () => els.drawer.classList.contains('open');
@@ -814,6 +951,7 @@
     els.drawer.classList.add('open');
     els.drawerBackdrop.classList.add('active');
     els.adminTab.setAttribute('aria-expanded', 'true');
+    $('btnOpenAdmin').setAttribute('aria-expanded', 'true');
     $('btnCloseAdmin').focus();
     loadLogs();
   }
@@ -822,6 +960,8 @@
     els.drawer.classList.remove('open');
     els.drawerBackdrop.classList.remove('active');
     els.adminTab.setAttribute('aria-expanded', 'false');
+    $('btnOpenAdmin').setAttribute('aria-expanded', 'false');
+    syncInert();
     if (adminOpener && adminOpener.focus) adminOpener.focus();
   }
 
@@ -840,7 +980,9 @@
 
   async function refreshLogs() {
     if (!state.mock) {
-      try { await fetchJson('/api/admin/refresh', { method: 'POST' }); } catch { /* fall through to reload */ }
+      try {
+        await fetchJson('/api/admin/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: '{}' });
+      } catch { /* fall through to reload */ }
     }
     await loadLogs();
     toast('Audit log refreshed.', 'success');
@@ -885,6 +1027,48 @@
     }));
   }
 
+  // ---------------------------------------------------------------- overlays: focus trap + inert background
+  /**
+   * Every dialog (.modal-overlay.active: architecture, PDF, image viewer, explainer; mm.js owns the last two) and the
+   * audit drawer (.open). While one is open the page behind it is inert and Tab / Shift+Tab wrap inside the top one.
+   * Driven by a MutationObserver on their class, so mm.js needs no hook into this file to open one. The observer runs
+   * after the click handler, so close functions call syncInert() (mm.js: demoApp.syncOverlays) before restoring focus.
+   */
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])';
+  const overlayEls = () => [els.drawer].concat(Array.from(document.querySelectorAll('.modal-overlay'))).filter(Boolean);
+  const isOverlayEl = (o) => o.classList.contains('active') || (o === els.drawer && o.classList.contains('open'));
+  const openOverlays = () => overlayEls().filter(isOverlayEl);
+  const isOverlayOpen = () => openOverlays().length > 0;
+
+  function syncInert() {
+    const on = isOverlayOpen();
+    [document.querySelector('.app-container'), els.adminTab].forEach((n) => {
+      if (!n) return;
+      if (on) n.setAttribute('inert', ''); else n.removeAttribute('inert');
+    });
+  }
+
+  function trapTab(e) {
+    if (e.key !== 'Tab') return;
+    const open = openOverlays();
+    const top = open[open.length - 1];   // later in the DOM = stacked on top
+    if (!top) return;
+    const items = Array.from(top.querySelectorAll(FOCUSABLE)).filter((n) => n.getClientRects().length && !n.closest('[hidden], [inert]'));
+    if (!items.length) { e.preventDefault(); return; }
+    const first = items[0], last = items[items.length - 1];
+    const active = document.activeElement;
+    if (!top.contains(active)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+    else if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+  }
+
+  function initOverlays() {
+    const mo = new MutationObserver(syncInert);
+    overlayEls().forEach((o) => mo.observe(o, { attributes: true, attributeFilter: ['class'] }));
+    document.addEventListener('keydown', trapTab);
+    syncInert();
+  }
+
   // ---------------------------------------------------------------- theme toggle
   function setTheme(t) {
     const applied = applyTheme(t);
@@ -904,18 +1088,18 @@
       archModal: $('archModal'), drawer: $('adminDrawer'), drawerBackdrop: $('adminDrawerBackdrop'), adminTab: $('adminTab'),
       auditSearch: $('auditSearch'), toasts: $('toastContainer'),
       fileInput: $('fileInput'), dropZone: $('dropZone'), chooseFileBtn: $('chooseFileBtn'), fileMeta: $('fileMeta'),
-      uploadBtn: $('uploadBtn'), uploadSpinner: $('uploadSpinner'), uploadCard: $('uploadResultCard'),
+      uploadBtn: $('uploadBtn'), uploadSpinner: $('uploadSpinner'), uploadResultCard: $('uploadResultCard'),
       uploadFileLine: $('uploadFileLine'), extractDetails: $('extractDetails'), compareGrid: $('compareGrid'),
       extractText: $('extractText'), extractCount: $('extractCount'),
       sampleList: $('sampleList'), pdfModal: $('pdfModal'), pdfTitle: $('pdfModalTitle'), pdfBadge: $('pdfModalBadge'),
       pdfNote: $('pdfModalNote'), pdfFrame: $('pdfFrame'), pdfOpenLink: $('pdfOpenLink'), pdfUseBtn: $('pdfUseBtn'),
-      pdfCloseBtn: $('pdfModalCloseBtn'),
+      pdfDownloadBtn: $('pdfDownloadBtn'), pdfCloseBtn: $('pdfModalCloseBtn'),
     });
 
     applyTheme(document.documentElement.getAttribute('data-theme')); // sync icons now that they exist
     $('themeToggleBtn').addEventListener('click', () => setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
 
-    els.prompt.addEventListener('input', updateCharCount);
+    els.prompt.addEventListener('input', onPromptInput);
     els.prompt.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); } });
     els.runBtn.addEventListener('click', run);
     $('clearBtn').addEventListener('click', () => {
@@ -932,11 +1116,14 @@
 
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      if (isPdfOpen()) { e.preventDefault(); closePdf(); } else if (isArchOpen()) { e.preventDefault(); closeArch(); } else if (isAdminOpen()) { e.preventDefault(); closeAdmin(); }
+      if (isModesOpen()) { e.preventDefault(); closeModes(); } else if (isPdfOpen()) { e.preventDefault(); closePdf(); } else if (isArchOpen()) { e.preventDefault(); closeArch(); } else if (isAdminOpen()) { e.preventDefault(); closeAdmin(); }
     });
 
     initSplitter();
     initArch();
+    initModes();
+    initOverlays();
+    updateCharCount();
     renderTextEmpty();
     initUpload();
     initSamples();
@@ -944,11 +1131,28 @@
     renderScenarios();
     if (state.mock) setGateway('warn', 'Mock mode');
 
+    /**
+     * Facade loader for add-ons (tour/present): one id space across the three views.
+     *   text ids (/api/config scenarios) -> Screen texts · 'doc-clean' | 'doc-injection' -> sample CV in Screen a document
+     *   'mm-*' -> Screen any modality (mm.js). Returns a boolean, or a Promise<boolean> when files are fetched.
+     */
+    function loadAny(id) {
+      if (typeof id !== 'string' || !id) return false;
+      if (id.startsWith('doc-')) return useSample(id.slice(4));
+      if (id.startsWith('mm-')) {
+        const mm = window.demoMM;
+        if (!mm || typeof mm.loadScenario !== 'function') return false;
+        setSectionOpen('mm', true);
+        return Promise.resolve(mm.loadScenario(id)).then(Boolean);
+      }
+      return loadScenario(id);
+    }
+
     window.demoApp = {
       slug: SLUG,
-      loadScenario, run, runUpload, useSample, setSectionOpen, setView,
+      loadScenario: loadAny, run, runUpload, useSample, setSectionOpen, setView,
       currentView: () => currentView,
-      isRunning: () => state.running || upload.running,
+      isRunning: () => state.running || upload.running || !!(window.demoMM && window.demoMM.isRunning && window.demoMM.isRunning()),
       scenarios: () => state.scenarios.slice(),
       selectedScenario: () => state.selected,
       lastResult: () => state.lastResult,
@@ -956,8 +1160,8 @@
       isMock: () => state.mock,
       openAdmin, closeAdmin, isAdminOpen,
       openArch, closeArch, isArchOpen,
-      openPdf, closePdf, isPdfOpen,
-      isOverlayOpen: () => isArchOpen() || isAdminOpen() || isPdfOpen(),
+      openPdf, closePdf, isPdfOpen, openPdfFile,
+      isOverlayOpen, syncOverlays: syncInert, openModes, closeModes, isModesOpen,
       toast, setTheme,
     };
     window.dispatchEvent(new CustomEvent('demo:ready', { detail: { slug: SLUG } }));

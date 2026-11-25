@@ -1,6 +1,12 @@
-# Model Armor 101: CLI edition
+# Model Armor and Apigee Demo: CLI edition
 
 > Two Apigee X proxies, one Model Armor template, one terminal app.
+
+> [!NOTE]
+> **Legacy, teaching-only variant.** This terminal version has simpler checks than the main demo: it fails closed
+> only on Model Armor's overall `invocationResult` (not on each filter's `executionState`), and it screens only the
+> **last text part** of the request while forwarding the rest of the body to Gemini unchanged. The reference is
+> the main proxy, [`apigee-model-armor-101-proxy`](../apigee-model-armor-101-proxy/) (see the main [README](../README.md)).
 
 The simplest version of the demo: no web UI. A single-file Python CLI sends prompts through **two
 Apigee X proxies** that both screen the prompt with the **same Model Armor template** before it reaches
@@ -22,7 +28,7 @@ ma101.py ──x-api-key──▶ Apigee X ──▶ VerifyAPIKey
                                    └─ callout: ExtractVariables → JS (body) →           │──▶ Model Armor
                                                ServiceCallout → ExtractVariables ───────┘    (template)
                                    ├─ match    → 400 BLOCKED_BY_MODEL_ARMOR (+ per-filter matchStates)
-                                   ├─ failure / not every filter ran → 503 (fail closed)
+                                   ├─ invocationResult ≠ SUCCESS or Model Armor error → 503
                                    └─ clean    → Gemini 2.5 Flash-Lite (Vertex AI, proxy's Google identity)
 ```
 
@@ -30,15 +36,16 @@ ma101.py ──x-api-key──▶ Apigee X ──▶ VerifyAPIKey
 
 **Native** (`proxies/model-armor-101-native/apiproxy/proxies/default.xml`)
 
-1. `SUP-Sanitize-Prompt`: reads `$.contents[-1].parts[-1].text`; a match raises `FilterMatched` → FaultRule → `AM-Error-Blocked` (400, filter match states from the policy's flow variables)
-2. `RF-Armor-Incomplete` if `invocationResult != SUCCESS` (503)
+1. `SUP-Sanitize-Prompt`: reads `$.contents[-1].parts[-1].text` (only that part is screened); a match raises `FilterMatched` → FaultRule → `AM-Error-Blocked` (400, filter match states from the policy's flow variables)
+2. `RF-Armor-Incomplete` if `invocationResult != SUCCESS` (503). Per-filter execution states are not checked
 3. `SMR-Sanitize-Response` is attached but **disabled** (the policy docs require one to exist; enable it to screen answers too)
 
 **Callout** (`proxies/model-armor-101-callout/apiproxy/proxies/default.xml`)
 
 1. `EV-Extract-Prompt` → `JS-Build-Armor-Body` (JSON-encodes the prompt)
 2. `SC-Model-Armor`: `POST https://modelarmor.<location>.rep.googleapis.com/v1/<template>:sanitizeUserPrompt` with `<GoogleAccessToken>`; any non-2xx → 503
-3. `EV-Armor-Result` → `RF-Armor-Blocked` (400) or `RF-Armor-Incomplete` (503)
+3. `EV-Armor-Result` → `RF-Armor-Blocked` (400) or `RF-Armor-Incomplete` (503, when `invocationResult != SUCCESS`
+   or the match state is not `NO_MATCH_FOUND`). Per-filter execution states are not checked
 
 > [!NOTE]
 > The callout must use the template's **regional** endpoint (`modelarmor.<location>.rep.googleapis.com`).
@@ -74,6 +81,9 @@ ARMOR_LOCATION=us-central1 ./setup.sh   # deploys both proxies, product, app; wr
 | `malicious-url` | Safe Browsing test page `testsafebrowsing.appspot.com/s/malware.html` | 400 · `malicious_uris` |
 | `harmful-content` | Insulting message about a coworker | 400 · `rai` |
 | `sensitive-data` | Test card `4111 1111 1111 1111` | 400 · `sdp` |
+
+The CLI reports Responsible AI as one filter, `rai`; the main demo shows the matched category, for example
+`rai:harassment`.
 
 ## Notes
 

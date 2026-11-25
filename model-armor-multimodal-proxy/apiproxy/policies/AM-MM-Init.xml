@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="false" enabled="true" name="AM-MM-Init">
+    <DisplayName>Init Multimodal Armor Variables</DisplayName>
+    <!-- Safe defaults so every error body is valid JSON, and the Armor timer starts here. -->
+    <AssignVariable>
+        <Name>mm.t0</Name>
+        <Ref>system.timestamp</Ref>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.stage</Name>
+        <Value>prompt</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.verdict</Name>
+        <Value>pending</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.matched</Name>
+        <Value>none</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.parts_json</Name>
+        <Value>[]</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.latency_ms</Name>
+        <Value>0</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.resp_verdict</Name>
+        <Value>none</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.resp_matched</Name>
+        <Value>none</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.resp_json</Name>
+        <Value>null</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.resp_latency_ms</Name>
+        <Value>0</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.image_action</Name>
+        <Value>redact</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.part_count</Name>
+        <Value>0</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.mode</Name>
+        <Value>callout</Value>
+    </AssignVariable>
+    <AssignVariable>
+        <Name>mm.unsupported_reason</Name>
+        <Value></Value>
+    </AssignVariable>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</AssignMessage>

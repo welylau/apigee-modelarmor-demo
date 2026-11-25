@@ -2,6 +2,7 @@
 sanitize.sh
 restore.sh
 .sanitize.map
+.sanitize.map.example
 .sanitize.state
 .sanitize.state.tmp.*
 .sanitize.allow

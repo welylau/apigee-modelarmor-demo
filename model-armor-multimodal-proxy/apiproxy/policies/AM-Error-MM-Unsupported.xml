@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="true" enabled="true" name="AM-Error-MM-Unsupported">
+    <DisplayName>400 Not Screenable by the Native Policy (fail closed)</DisplayName>
+    <Set>
+        <Headers>
+            <Header name="Content-Type">application/json</Header>
+            <Header name="X-Request-Id">{messageid}</Header>
+            <Header name="X-Armor-Mode">{mm.mode}</Header>
+            <Header name="X-Armor-Stage">{mm.stage}</Header>
+            <Header name="X-Armor-Prompt-Verdict">{mm.verdict}</Header>
+            <Header name="X-Armor-Response-Verdict">{mm.resp_verdict}</Header>
+            <Header name="X-Armor-Latency-Ms">{mm.latency_ms}</Header>
+            <Header name="X-Armor-Verdict">unsupported</Header>
+        </Headers>
+        <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"code":400,"status":"NOT_SCREENABLE_BY_NATIVE_POLICY","stage":"prompt","message":"@mm.unsupported_reason#","armor":{"mode":"native","verdict":"unsupported","matched":"@mm.matched#","parts":@mm.parts_json#,"response":null,"latencyMs":@mm.latency_ms#},"requestId":"@messageid#"}}</Payload>
+        <StatusCode>400</StatusCode>
+        <ReasonPhrase>Bad Request</ReasonPhrase>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="response"/>
+</AssignMessage>

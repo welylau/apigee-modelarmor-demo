@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Model Armor 101 - demo web server (Backend-for-Frontend).
+Model Armor and Apigee Demo - web server (Backend-for-Frontend).
 
 Serves ./static and proxies scenario runs to the Apigee proxy
 https://$APIGEE_HOST/apigee-model-armor-101/generate with the app key (env API_KEY).
@@ -18,7 +18,8 @@ POST /api/upload screens one uploaded document through BOTH modes at once:
              (PDF / TXT / CSV) and parses the document itself
 
 Security notes (house rules, derived from the SDP demo WebUI):
-- Python stdlib only. Same-origin only: no CORS headers.
+- Python stdlib only. Same-origin only: no CORS headers. POST /api/* must be Content-Type application/json
+  and same-origin (Sec-Fetch-Site / Origin checks), otherwise 415 / 403.
 - The API key is never sent to the browser (/api/config returns apiKeyConfigured).
 - Prompts are never persisted; audit_logs.json only keeps metadata (no prompt text).
 - Binds to 127.0.0.1 unless HOST is set (the Dockerfile sets HOST=0.0.0.0, Cloud Run is behind IAP).
@@ -42,14 +43,27 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
 
+import multimodal
 import pdf_text
 
 mimetypes.add_type("image/svg+xml", ".svg")
 mimetypes.add_type("application/javascript", ".js")
+
+MODEL = os.environ.get("MODEL", "gemini-2.5-flash-lite")
+
+
+def model_label(model):
+    """Display name for scenario text: 'gemini-2.5-flash-lite' -> 'Gemini 2.5 Flash-Lite'; anything else -> 'Gemini'."""
+    m = re.fullmatch(r"gemini-(\d+(?:\.\d+)?)-([a-z]+(?:-lite)?)", model or "")
+    if not m:
+        return "Gemini"
+    return f"Gemini {m.group(1)} " + "-".join(w.capitalize() for w in m.group(2).split("-"))
+
 
 # ---------------------------------------------------------------------------
 # Demo scenarios. "expect" is "allowed" or "blocked"; "filter" is the Model Armor
@@ -60,7 +74,7 @@ SCENARIOS = [
     {
         "id": "clean",
         "label": "Clean prompt",
-        "description": "A harmless question passes Model Armor and Gemini Flash-Lite answers.",
+        "description": f"A harmless question passes Model Armor and {model_label(MODEL)} answers.",
         "prompt": "Explain in two sentences what an API gateway does for AI applications.",
         "expect": "allowed",
         "filter": None,
@@ -108,7 +122,7 @@ ARMOR_MODES = [
 ARMOR_MODE_IDS = {m["id"] for m in ARMOR_MODES}
 
 DEMO_SLUG = "apigee-model-armor-101"
-DEMO_TITLE = "Model Armor and Apigee Demo"
+DEMO_TITLE = "Model Armor & Apigee Demo: Text, Documents, and Multi-modalities"
 DEMO_SUBTITLE = "Apigee X + Model Armor + Gemini Flash-Lite"
 
 HOST = os.environ.get("HOST", "127.0.0.1")
@@ -134,10 +148,11 @@ EXTRACT_PREVIEW_CHARS = 8000
 # Same wording as the proxy's fileInstruction property, so both paths ask Gemini the same thing.
 FILE_INSTRUCTION = "You are reviewing an uploaded document. Summarise it in three short bullet points."
 MAX_LOG_ENTRIES = 500
+# Responses of these types get "; charset=utf-8".
+TEXT_TYPES = {"text/html", "text/plain", "text/css", "application/json", "application/javascript", "image/svg+xml"}
 
 PROJECT_ID = os.environ.get("PROJECT_ID", "YOUR_PROJECT_ID")
 APIGEE_HOST = os.environ.get("APIGEE_HOST", "YOUR_APIGEE_HOST").replace("https://", "").strip("/")
-MODEL = os.environ.get("MODEL", "gemini-2.5-flash-lite")
 API_KEY = os.environ.get("API_KEY", "")
 DEMO_MOCK = os.environ.get("DEMO_MOCK") == "1"
 # Model Armor template shown in the UI (link to the Cloud console). Not secret; no default location.
@@ -190,11 +205,10 @@ def armor_template_info():
 
 
 def mask_key(key):
+    """Shown in the raw request panel: never more than the last 4 characters."""
     if not key:
         return ""
-    if len(key) <= 12:
-        return "****"
-    return f"{key[:4]}…{key[-4:]}"
+    return "••••" + key[-4:] if len(key) > 8 else "••••"
 
 
 def verdict_for(status):
@@ -217,6 +231,8 @@ class AuditStore:
     """
 
     FIELDS = ("ts", "scenarioId", "armorMode", "armorFilters", "httpStatus", "verdict", "latencyMs", "source")
+    # Entries also keep "requestId" (the proxy's X-Request-Id = messageid) so a Cloud Logging pull
+    # does not add a second row for a request this server already recorded.
 
     def __init__(self, filepath):
         self.filepath = filepath
@@ -238,13 +254,16 @@ class AuditStore:
             self.entries = []
 
     def _save(self):
+        """Atomic write (temp file + os.replace): a crash mid-write never truncates audit_logs.json."""
+        tmp = f"{self.filepath}.tmp"
         try:
-            with open(self.filepath, "w", encoding="utf-8") as f:
+            with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(self.entries, f, indent=2)
+            os.replace(tmp, self.filepath)
         except Exception as e:
             print(f"Error saving {self.filepath}: {e}", file=sys.stderr)
 
-    def record(self, scenario_id, armor_mode, armor_filters, http_status, verdict, latency_ms):
+    def record(self, scenario_id, armor_mode, armor_filters, http_status, verdict, latency_ms, request_id=None):
         entry = {
             "id": f"ui-{int(time.time() * 1000)}-{random.randint(1000, 9999)}",
             "ts": now_iso(),
@@ -255,6 +274,7 @@ class AuditStore:
             "verdict": verdict,
             "latencyMs": latency_ms,
             "source": "mock" if DEMO_MOCK else "ui",
+            "requestId": clean_label(request_id, 80) or None,
         }
         with self.lock:
             self.entries.insert(0, entry)
@@ -292,16 +312,26 @@ class AuditStore:
         try:
             entries = self._read_cloud_logging()
         except Exception as e:
-            self.last_sync_error = f"{e.__class__.__name__}: {str(e)[:200]}"
-            print(f"Cloud Logging sync failed: {self.last_sync_error}", file=sys.stderr)
+            err = f"{e.__class__.__name__}: {str(e)[:200]}"
+            if err != self.last_sync_error:   # log a failure once, not on every Refresh until it changes
+                print(f"Cloud Logging sync failed: {err}", file=sys.stderr)
+            self.last_sync_error = err
             return False
         with self.lock:
             known = {e.get("id") for e in self.entries}
+            # Requests this server already recorded (same proxy messageid): don't count them twice.
+            local_req_ids = {e.get("requestId") for e in self.entries
+                             if e.get("requestId") and e.get("source") != "cloud-logging"}
             for e in entries:
                 insert_id = e.get("insertId")
                 if not insert_id or insert_id in known:
                     continue
                 p = e.get("jsonPayload") or {}
+                if not isinstance(p, dict):
+                    p = {}
+                req_id = clean_label(p.get("requestId"), 80) or None
+                if req_id and req_id in local_req_ids:
+                    continue
                 try:
                     status = int(p.get("httpStatus") or 0)
                 except (TypeError, ValueError):
@@ -320,6 +350,7 @@ class AuditStore:
                     "verdict": verdict_for(status) if status else "error",
                     "latencyMs": armor_ms,
                     "source": "cloud-logging",
+                    "requestId": req_id,
                 })
             self.entries.sort(key=lambda x: x.get("ts", ""), reverse=True)
             del self.entries[MAX_LOG_ENTRIES:]
@@ -442,7 +473,8 @@ def execute(scenario_id, armor_mode, body, mock_text, scenario=None, armor_input
     if isinstance(err, dict) and err.get("status") == "INVALID_ARGUMENT":
         verdict = "error"  # the proxy rejected the request shape; no policy decision was made
     armor = extract_armor(resp_headers, resp_json, armor_mode)
-    audit_store.record(scenario_id, armor["mode"], ",".join(armor["filters"]) or None, status, verdict, latency)
+    audit_store.record(scenario_id, armor["mode"], ",".join(armor["filters"]) or None, status, verdict, latency,
+                       request_id=multimodal.header(resp_headers, "X-Request-Id"))
     return {
         "ok": verdict == "allowed",
         "httpStatus": status,
@@ -452,7 +484,7 @@ def execute(scenario_id, armor_mode, body, mock_text, scenario=None, armor_input
         "armor": armor,
         "response": resp_json,
         "requestHeaders": shown_headers,
-        "responseHeaders": resp_headers,
+        "responseHeaders": multimodal.keep_headers(resp_headers),
     }
 
 
@@ -477,6 +509,8 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
     def _headers(self, status, content_type, length):
         # Same-origin only: no CORS headers are emitted.
         is_pdf = content_type == "application/pdf"
+        if content_type in TEXT_TYPES:
+            content_type += "; charset=utf-8"
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(length))
@@ -484,16 +518,23 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        # HSTS only when the request reached the front end over HTTPS (Cloud Run sets X-Forwarded-Proto),
+        # never on plain-HTTP localhost.
+        if (self.headers.get("X-Forwarded-Proto") or "").split(",")[0].strip().lower() == "https":
+            self.send_header("Strict-Transport-Security", "max-age=31536000")
         if is_pdf:
             # Sample CVs are shown in an <iframe> on our own page: same-origin framing only.
             self.send_header("X-Frame-Options", "SAMEORIGIN")
             self.send_header("Content-Security-Policy", "frame-ancestors 'self'; base-uri 'none'")
         else:
             self.send_header("X-Frame-Options", "DENY")
+            # frame-src blob: lets the PDF viewer show an attachment the browser turned into a same-origin
+            # blob: URL (typed application/pdf by mm.js), without uploading it anywhere.
             self.send_header("Content-Security-Policy",
                              "default-src 'self'; script-src 'self'; "
                              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                              "font-src https://fonts.gstatic.com; img-src 'self' https://www.gstatic.com data:; "
+                             "frame-src 'self' blob:; "
                              "connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'")
         self.end_headers()
 
@@ -518,6 +559,20 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
             return None, (400, "Body must be a JSON object")
         return data, None
 
+    # ----------------------------------------------------------------- HEAD
+    def do_HEAD(self):
+        """Headers only, for uptime checks: / and /healthz."""
+        path = urllib.parse.urlparse(self.path).path or "/"
+        if path == "/healthz":
+            return self._headers(200, "application/json", len(json.dumps({"ok": True})))
+        if path in ("/", "/index.html"):
+            try:
+                size = os.path.getsize(os.path.join(STATIC_DIR, "index.html"))
+            except OSError:
+                return self._headers(404, "text/plain", 0)
+            return self._headers(200, "text/html", size)
+        return self._headers(404, "text/plain", 0)
+
     # ------------------------------------------------------------------ GET
     def do_GET(self):
         path = urllib.parse.urlparse(self.path).path or "/"
@@ -536,8 +591,13 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
                 "armorModes": ARMOR_MODES,
                 "armorTemplate": armor_template_info(),
                 "scenarios": SCENARIOS,
+                "maxPromptChars": MAX_PROMPT_CHARS,
                 "upload": {"maxBytes": MAX_UPLOAD_BYTES, "extensions": sorted(UPLOAD_TYPES),
                            "nativeMaxChars": NATIVE_MAX_CHARS},
+                "multimodal": {"basepath": "/model-armor-multimodal", "scenarios": multimodal.SCENARIOS,
+                               "extensions": sorted(multimodal.TYPES), "maxFiles": multimodal.MAX_FILES,
+                               "maxFileBytes": multimodal.MAX_FILE_BYTES, "maxTotalBytes": multimodal.MAX_TOTAL_BYTES,
+                               "maxPromptChars": multimodal.MAX_PROMPT_CHARS},
             })
         if path == "/api/admin/logs":
             return self._send_json(200, audit_store.get_data())
@@ -559,11 +619,52 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     # ----------------------------------------------------------------- POST
+    def _post_rejection(self):
+        """(status, message) when a POST /api/* must be refused before reading the body, else None.
+
+        JSON-only + same-origin, so a cross-site form or fetch can't drive the gateway with this server's key.
+        """
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ctype != "application/json":
+            return 415, "Content-Type must be application/json"
+        site = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
+        if site and site not in ("same-origin", "none"):
+            return 403, "Cross-site requests are not allowed"
+        origin = self.headers.get("Origin")
+        if origin is not None:
+            origin_host = urllib.parse.urlparse(origin.strip()).netloc.lower()
+            if not origin_host or origin_host != (self.headers.get("Host") or "").strip().lower():
+                return 403, "Cross-origin requests are not allowed"
+        return None
+
     def do_POST(self):
+        try:
+            self._dispatch_post()
+        except Exception as e:
+            # Never echo the input or the exception text: class name only; full traceback to stderr.
+            traceback.print_exc(file=sys.stderr)
+            try:
+                self._send_json(500, {"ok": False, "error": f"Internal error ({e.__class__.__name__})"})
+            except Exception:
+                pass  # headers already sent, or the client went away
+
+    def _dispatch_post(self):
         path = urllib.parse.urlparse(self.path).path
-        data, err = self._read_json(MAX_UPLOAD_BODY_BYTES if path == "/api/upload" else MAX_BODY_BYTES)
+        if path.startswith("/api/"):
+            rejected = self._post_rejection()
+            if rejected:
+                return self._send_json(rejected[0], {"ok": False, "error": rejected[1]})
+        limits = {"/api/upload": MAX_UPLOAD_BODY_BYTES, "/api/multimodal": multimodal.MAX_BODY_BYTES}
+        data, err = self._read_json(limits.get(path, MAX_BODY_BYTES))
         if err:
             return self._send_json(err[0], {"ok": False, "error": err[1]})
+        if path == "/api/multimodal":
+            try:
+                return self._send_json(200, multimodal.run(data, {
+                    "api_key": API_KEY, "apigee_host": APIGEE_HOST, "ssl_ctx": ssl_ctx, "mock": DEMO_MOCK,
+                    "record": audit_store.record, "mask_key": mask_key}))
+            except multimodal.BadRequest as e:
+                return self._send_json(400, {"ok": False, "error": str(e)})
         if path == "/api/run":
             return self._handle_run(data)
         if path == "/api/compare":
@@ -664,9 +765,9 @@ class DemoHandler(http.server.BaseHTTPRequestHandler):
             native_skip = ("No text could be extracted from this file" + (f" ({note})" if note else "")
                            + ", so there was nothing to send to the native SanitizeUserPrompt policy.")
         elif len(native_prompt) > NATIVE_MAX_CHARS:
-            native_skip = (f"The extracted text is {len(text):,} chars, but the native path takes at most "
-                           f"{NATIVE_MAX_CHARS:,} chars per prompt. It was not truncated, because cutting it "
-                           "would let unscreened text reach Gemini.")
+            native_skip = (f"The prompt would be {len(native_prompt):,} chars (instruction + {len(text):,} chars of "
+                           f"extracted text), but the native path takes at most {NATIVE_MAX_CHARS:,} chars per prompt. "
+                           "It was not truncated, because cutting it would let unscreened text reach Gemini.")
         file_b64 = base64.b64encode(raw).decode("ascii")
         callout_body = {"contents": [{"role": "user", "parts": [{"inlineData": {"mimeType": mime, "data": file_b64}}]}]}
 

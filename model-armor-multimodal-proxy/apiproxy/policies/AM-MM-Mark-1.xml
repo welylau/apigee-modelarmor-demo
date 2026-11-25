@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="false" enabled="true" name="AM-MM-Mark-1">
+    <DisplayName>Time After Part 1</DisplayName>
+    <AssignVariable>
+        <Name>mm.t1</Name>
+        <Ref>system.timestamp</Ref>
+    </AssignVariable>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</AssignMessage>

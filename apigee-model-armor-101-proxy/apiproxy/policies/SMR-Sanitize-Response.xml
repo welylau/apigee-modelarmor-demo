@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <!-- Prompt-only demo: attached to the response flow but DISABLED.
      The SanitizeUserPrompt docs ask for a SanitizeModelResponse policy to exist before the
-     prompt policy is deployed. Set enabled="true" to also screen Gemini's answers. -->
+     prompt policy is deployed. Set enabled="true" to also screen Gemini's answers.
+     The flow step is conditioned on armor.input = "text": file uploads (callout mode) never set
+     private.armor.prompt, and IgnoreUnresolvedVariables=false below would fault on it. -->
 <SanitizeModelResponse continueOnError="false" enabled="false" name="SMR-Sanitize-Response">
     <DisplayName>Model Armor: Sanitize Model Response (disabled)</DisplayName>
     <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>

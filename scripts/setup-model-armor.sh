@@ -56,7 +56,9 @@ fi
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 TOKEN="$(gcloud auth print-access-token)"
 call() {  # call METHOD URL [JSON] -> prints HTTP code; body in $TMP/body
-  local args=(-sS -o "$TMP/body" -w '%{http_code}' -X "$1" "$2" -H "Authorization: Bearer ${TOKEN}")
+  # x-goog-user-project: a gcloud *user* token needs an explicit quota project for this API.
+  local args=(-sS -o "$TMP/body" -w '%{http_code}' -X "$1" "$2" -H "Authorization: Bearer ${TOKEN}"
+              -H "x-goog-user-project: ${ARMOR_PROJECT}")
   [ -n "${3:-}" ] && args+=(-H "Content-Type: application/json" --data "$3")
   curl "${args[@]}"
 }

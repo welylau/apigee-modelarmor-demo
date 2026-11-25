@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="false" enabled="true" name="AM-MM-Stage-Response">
+    <DisplayName>Mark Response Stage</DisplayName>
+    <AssignVariable>
+        <Name>mm.stage</Name>
+        <Value>response</Value>
+    </AssignVariable>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</AssignMessage>

@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  POST /model-armor-multimodal/generate        text + images + documents in, text out   (chat model)
+  POST /model-armor-multimodal/generate-image  text (+ images) in, text + image out       (image model)
+  Every part of the prompt and every part of the answer is screened by Model Armor through the REST API
+  (callout mode, the default).
+  Apigee's built-in SanitizeUserPrompt / SanitizeModelResponse policies scan text only, so images and documents
+  use ServiceCallouts (userPromptData / modelResponseData byteItem).
+-->
+<ProxyEndpoint name="default">
+    <PreFlow name="PreFlow">
+        <Request>
+            <!-- 1. Consumer identity -->
+            <Step>
+                <Name>VA-Verify-API-Key</Name>
+            </Step>
+        </Request>
+        <Response/>
+    </PreFlow>
+    <Flows>
+        <Flow name="generate">
+            <Description>POST /generate: multimodal prompt (text + up to 3 files), every part screened, then Gemini</Description>
+            <Condition>(proxy.pathsuffix MatchesPath "/generate") and (request.verb = "POST")</Condition>
+            <Request>
+                <!-- 2. Defaults + start the Armor timer -->
+                <Step>
+                    <Name>AM-MM-Init</Name>
+                </Step>
+                <!-- 3. Split the prompt: 1 text part + up to 3 files (image / PDF / Word / Excel / PowerPoint / TXT / CSV).
+                     Builds one Model Armor body per part; Gemini gets only what it can read.
+                     x-armor-mode: callout (default, REST API) | native (built-in policies, text only). -->
+                <Step>
+                    <Name>JS-Split-Parts</Name>
+                </Step>
+                <Step>
+                    <Name>RF-Bad-Request</Name>
+                    <Condition>mm.input_ok != "true"</Condition>
+                </Step>
+                <!-- 4a. MODE callout: one ServiceCallout per part (Model Armor screens one item per call; Apigee has no
+                     loops, so the callouts are fixed and conditioned). -->
+                <Step>
+                    <Name>SC-MM-Part-1</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 1)</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-MM-Mark-1</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 1)</Condition>
+                </Step>
+                <Step>
+                    <Name>SC-MM-Part-2</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 2)</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-MM-Mark-2</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 2)</Condition>
+                </Step>
+                <Step>
+                    <Name>SC-MM-Part-3</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 3)</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-MM-Mark-3</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 3)</Condition>
+                </Step>
+                <Step>
+                    <Name>SC-MM-Part-4</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 4)</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-MM-Mark-4</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 4)</Condition>
+                </Step>
+                <Step>
+                    <Name>JS-Evaluate-Parts</Name>
+                    <Condition>(mm.mode = "callout")</Condition>
+                </Step>
+                <!-- 4b. MODE native: Apigee's built-in SanitizeUserPrompt screens the TEXT part only. Attachments (or an image
+                     answer) cannot be screened natively, so the request is rejected before Gemini (fail closed).
+                     A match raises FilterMatched -> FaultRule "mm-native-match". -->
+                <Step>
+                    <Name>SUP-MM-Native-Prompt</Name>
+                    <Condition>(mm.mode = "native")</Condition>
+                </Step>
+                <Step>
+                    <Name>JS-Native-Evaluate</Name>
+                    <Condition>(mm.mode = "native")</Condition>
+                </Step>
+                <Step>
+                    <Name>RF-MM-Unsupported</Name>
+                    <Condition>(mm.mode = "native") and (mm.verdict = "unsupported")</Condition>
+                </Step>
+                <!-- 5. Blocked if ANY part matched; 503 if any part could not be fully screened -->
+                <Step>
+                    <Name>RF-MM-Blocked</Name>
+                    <Condition>mm.verdict = "blocked"</Condition>
+                </Step>
+                <Step>
+                    <Name>RF-MM-Incomplete</Name>
+                    <Condition>mm.verdict != "allowed"</Condition>
+                </Step>
+                <!-- 6. Clean prompt: strip caller credentials, forward to Gemini -->
+                <Step>
+                    <Name>AM-Prepare-Gemini-Request</Name>
+                </Step>
+            </Request>
+            <Response>
+                <!-- 7. Screen the answer: text and (image model) the generated image -->
+                <Step>
+                    <Name>AM-MM-Stage-Response</Name>
+                </Step>
+                <Step>
+                    <Name>JS-Split-Response</Name>
+                </Step>
+                <Step>
+                    <Name>SC-MM-Resp-Text</Name>
+                    <Condition>(mm.mode = "callout") and (mm.resp_has_text = "true")</Condition>
+                </Step>
+                <Step>
+                    <Name>SC-MM-Resp-Image</Name>
+                    <Condition>(mm.mode = "callout") and (mm.resp_has_image = "true")</Condition>
+                </Step>
+                <!-- 8. Block, redact (swap in Model Armor's redactedImage) or pass; fail closed -->
+                <Step>
+                    <Name>JS-Apply-Response</Name>
+                    <Condition>(mm.mode = "callout")</Condition>
+                </Step>
+                <!-- 7-8 native: built-in SanitizeModelResponse on the answer text (image answers never reach this point) -->
+                <Step>
+                    <Name>SMR-MM-Native-Response</Name>
+                    <Condition>(mm.mode = "native") and (mm.resp_has_text = "true")</Condition>
+                </Step>
+                <Step>
+                    <Name>JS-Native-Evaluate</Name>
+                    <Condition>(mm.mode = "native")</Condition>
+                </Step>
+                <Step>
+                    <Name>RF-MM-Blocked</Name>
+                    <Condition>mm.resp_verdict = "blocked"</Condition>
+                </Step>
+                <Step>
+                    <Name>RF-MM-Incomplete</Name>
+                    <Condition>(mm.resp_verdict != "allowed") and (mm.resp_verdict != "redacted")</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-MM-Headers</Name>
+                </Step>
+            </Response>
+        </Flow>
+        <Flow name="generate-image">
+            <Description>POST /generate-image: same prompt screening, Gemini image model, generated image screened (block or redact)</Description>
+            <Condition>(proxy.pathsuffix MatchesPath "/generate-image") and (request.verb = "POST")</Condition>
+            <Request>
+                <!-- 2. Defaults + start the Armor timer -->
+                <Step>
+                    <Name>AM-MM-Init</Name>
+                </Step>
+                <!-- 3. Split the prompt: 1 text part + up to 3 files (image / PDF / Word / Excel / PowerPoint / TXT / CSV).
+                     Builds one Model Armor body per part; Gemini gets only what it can read.
+                     x-armor-mode: callout (default, REST API) | native (built-in policies, text only). -->
+                <Step>
+                    <Name>JS-Split-Parts</Name>
+                </Step>
+                <Step>
+                    <Name>RF-Bad-Request</Name>
+                    <Condition>mm.input_ok != "true"</Condition>
+                </Step>
+                <!-- 4a. MODE callout: one ServiceCallout per part (Model Armor screens one item per call; Apigee has no
+                     loops, so the callouts are fixed and conditioned). -->
+                <Step>
+                    <Name>SC-MM-Part-1</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 1)</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-MM-Mark-1</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 1)</Condition>
+                </Step>
+                <Step>
+                    <Name>SC-MM-Part-2</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 2)</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-MM-Mark-2</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 2)</Condition>
+                </Step>
+                <Step>
+                    <Name>SC-MM-Part-3</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 3)</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-MM-Mark-3</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 3)</Condition>
+                </Step>
+                <Step>
+                    <Name>SC-MM-Part-4</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 4)</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-MM-Mark-4</Name>
+                    <Condition>(mm.mode = "callout") and (mm.part_count >= 4)</Condition>
+                </Step>
+                <Step>
+                    <Name>JS-Evaluate-Parts</Name>
+                    <Condition>(mm.mode = "callout")</Condition>
+                </Step>
+                <!-- 4b. MODE native: Apigee's built-in SanitizeUserPrompt screens the TEXT part only. Attachments (or an image
+                     answer) cannot be screened natively, so the request is rejected before Gemini (fail closed).
+                     A match raises FilterMatched -> FaultRule "mm-native-match". -->
+                <Step>
+                    <Name>SUP-MM-Native-Prompt</Name>
+                    <Condition>(mm.mode = "native")</Condition>
+                </Step>
+                <Step>
+                    <Name>JS-Native-Evaluate</Name>
+                    <Condition>(mm.mode = "native")</Condition>
+                </Step>
+                <Step>
+                    <Name>RF-MM-Unsupported</Name>
+                    <Condition>(mm.mode = "native") and (mm.verdict = "unsupported")</Condition>
+                </Step>
+                <!-- 5. Blocked if ANY part matched; 503 if any part could not be fully screened -->
+                <Step>
+                    <Name>RF-MM-Blocked</Name>
+                    <Condition>mm.verdict = "blocked"</Condition>
+                </Step>
+                <Step>
+                    <Name>RF-MM-Incomplete</Name>
+                    <Condition>mm.verdict != "allowed"</Condition>
+                </Step>
+                <!-- 6. Clean prompt: strip caller credentials, forward to Gemini -->
+                <Step>
+                    <Name>AM-Prepare-Gemini-Request</Name>
+                </Step>
+            </Request>
+            <Response>
+                <!-- 7. Screen the answer: text and (image model) the generated image -->
+                <Step>
+                    <Name>AM-MM-Stage-Response</Name>
+                </Step>
+                <Step>
+                    <Name>JS-Split-Response</Name>
+                </Step>
+                <Step>
+                    <Name>SC-MM-Resp-Text</Name>
+                    <Condition>(mm.mode = "callout") and (mm.resp_has_text = "true")</Condition>
+                </Step>
+                <Step>
+                    <Name>SC-MM-Resp-Image</Name>
+                    <Condition>(mm.mode = "callout") and (mm.resp_has_image = "true")</Condition>
+                </Step>
+                <!-- 8. Block, redact (swap in Model Armor's redactedImage) or pass; fail closed -->
+                <Step>
+                    <Name>JS-Apply-Response</Name>
+                    <Condition>(mm.mode = "callout")</Condition>
+                </Step>
+                <!-- 7-8 native: built-in SanitizeModelResponse on the answer text (image answers never reach this point) -->
+                <Step>
+                    <Name>SMR-MM-Native-Response</Name>
+                    <Condition>(mm.mode = "native") and (mm.resp_has_text = "true")</Condition>
+                </Step>
+                <Step>
+                    <Name>JS-Native-Evaluate</Name>
+                    <Condition>(mm.mode = "native")</Condition>
+                </Step>
+                <Step>
+                    <Name>RF-MM-Blocked</Name>
+                    <Condition>mm.resp_verdict = "blocked"</Condition>
+                </Step>
+                <Step>
+                    <Name>RF-MM-Incomplete</Name>
+                    <Condition>(mm.resp_verdict != "allowed") and (mm.resp_verdict != "redacted")</Condition>
+                </Step>
+                <Step>
+                    <Name>AM-MM-Headers</Name>
+                </Step>
+            </Response>
+        </Flow>
+        <Flow name="not-found">
+            <Request>
+                <Step>
+                    <Name>RF-Not-Found</Name>
+                </Step>
+            </Request>
+            <Response/>
+        </Flow>
+    </Flows>
+    <PostClientFlow name="PostClientFlow">
+        <Response>
+            <Step>
+                <Name>ML-Log-Audit</Name>
+            </Step>
+        </Response>
+    </PostClientFlow>
+    <HTTPProxyConnection>
+        <BasePath>/model-armor-multimodal</BasePath>
+    </HTTPProxyConnection>
+    <RouteRule name="default">
+        <TargetEndpoint>default</TargetEndpoint>
+    </RouteRule>
+    <!-- Conditions are mutually exclusive, so evaluation order does not matter. -->
+    <FaultRules>
+        <FaultRule name="invalid-api-key">
+            <Step>
+                <Name>AM-Error-Unauthenticated</Name>
+            </Step>
+            <Condition>(fault.name = "FailedToResolveAPIKey") or (fault.name = "InvalidApiKey") or (fault.name = "InvalidApiKeyForGivenResource") or (fault.name = "ApiKeyNotApproved") or (fault.name = "DeveloperStatusNotActive") or (fault.name = "consumer_key_expired")</Condition>
+        </FaultRule>
+        <!-- A part of the prompt, or of the answer, matched a filter. -->
+        <FaultRule name="mm-blocked">
+            <Step>
+                <Name>AM-Error-MM-Blocked</Name>
+            </Step>
+            <Condition>(fault.name != "FilterMatched") and (((mm.stage = "prompt") and (mm.verdict = "blocked")) or ((mm.stage = "response") and (mm.resp_verdict = "blocked")))</Condition>
+        </FaultRule>
+        <!-- Native mode: the built-in SanitizeUserPrompt / SanitizeModelResponse policy raised FilterMatched. -->
+        <FaultRule name="mm-native-match">
+            <Step>
+                <Name>JS-Native-Evaluate</Name>
+            </Step>
+            <Step>
+                <Name>AM-Error-MM-Blocked</Name>
+            </Step>
+            <Condition>fault.name = "FilterMatched"</Condition>
+        </FaultRule>
+        <!-- Native mode: attachments or an image answer, which the built-in (text-only) policies cannot screen. -->
+        <FaultRule name="mm-native-unsupported">
+            <Step>
+                <Name>AM-Error-MM-Unsupported</Name>
+            </Step>
+            <Condition>(fault.name != "FilterMatched") and (mm.stage = "prompt") and (mm.verdict = "unsupported")</Condition>
+        </FaultRule>
+        <!-- Something could not be fully screened (file over limits, skipped filter, Model Armor error): never forward it. -->
+        <FaultRule name="mm-unavailable">
+            <!-- A failed callout leaves the stage verdict at its default: name it for X-Armor-*-Verdict. -->
+            <Step>
+                <Name>AM-MM-Prompt-Incomplete</Name>
+                <Condition>(mm.stage = "prompt") and (mm.verdict = "pending")</Condition>
+            </Step>
+            <Step>
+                <Name>AM-MM-Response-Incomplete</Name>
+                <Condition>(mm.stage = "response") and (mm.resp_verdict = "none")</Condition>
+            </Step>
+            <Step>
+                <Name>AM-Error-MM-Unavailable</Name>
+            </Step>
+            <Condition>(fault.name != "FilterMatched") and !(((mm.stage = "prompt") and (mm.verdict = "blocked")) or ((mm.stage = "response") and (mm.resp_verdict = "blocked"))) and !((mm.stage = "prompt") and (mm.verdict = "unsupported")) and ((mm.verdict = "incomplete") or (mm.resp_verdict = "incomplete") or (servicecallout.SC-MM-Part-1.failed = true) or (servicecallout.SC-MM-Part-2.failed = true) or (servicecallout.SC-MM-Part-3.failed = true) or (servicecallout.SC-MM-Part-4.failed = true) or (servicecallout.SC-MM-Resp-Text.failed = true) or (servicecallout.SC-MM-Resp-Image.failed = true) or (SanitizeUserPrompt.SUP-MM-Native-Prompt.failed = true) or (SanitizeModelResponse.SMR-MM-Native-Response.failed = true))</Condition>
+        </FaultRule>
+    </FaultRules>
+    <DefaultFaultRule name="default-fault-handler">
+        <Step>
+            <Condition>fault.name != "RaiseFault"</Condition>
+            <Name>AM-Error-Default</Name>
+        </Step>
+        <AlwaysEnforce>false</AlwaysEnforce>
+    </DefaultFaultRule>
+</ProxyEndpoint>

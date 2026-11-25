@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Runs the Model Armor 101 web UI locally.
+# Runs the Model Armor and Apigee Demo web UI locally.
 #   ./run-local.sh                 # uses .env (API_KEY etc.)
 #   DEMO_MOCK=1 ./run-local.sh     # fake gateway results, no Apigee needed
 # ==============================================================================
@@ -27,7 +27,7 @@ case "${APIGEE_HOST:-YOUR_APIGEE_HOST}" in
 esac
 
 echo "=================================================================="
-echo "▶ Model Armor and Apigee Demo UI: http://localhost:${PORT}  (bound to ${HOST})"
+echo "▶ Model Armor & Apigee Demo: Text, Documents, and Multi-modalities UI: http://localhost:${PORT}  (bound to ${HOST})"
 [ "${DEMO_MOCK:-0}" = "1" ] && echo "  DEMO_MOCK=1: gateway calls are simulated"
 echo "=================================================================="
 exec python3 "$DIR/server.py"

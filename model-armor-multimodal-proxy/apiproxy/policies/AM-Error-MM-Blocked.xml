@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="true" enabled="true" name="AM-Error-MM-Blocked">
+    <DisplayName>400 Blocked by Model Armor</DisplayName>
+    <!-- Filter names per part only; never the prompt, file bytes, OCR text or the raw Model Armor result. -->
+    <Set>
+        <Headers>
+            <Header name="Content-Type">application/json</Header>
+            <Header name="X-Request-Id">{messageid}</Header>
+            <Header name="X-Armor-Mode">{mm.mode}</Header>
+            <Header name="X-Armor-Stage">{mm.stage}</Header>
+            <Header name="X-Armor-Prompt-Verdict">{mm.verdict}</Header>
+            <Header name="X-Armor-Response-Verdict">{mm.resp_verdict}</Header>
+            <Header name="X-Armor-Latency-Ms">{mm.latency_ms}</Header>
+            <Header name="X-Armor-Verdict">blocked</Header>
+        </Headers>
+        <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"code":400,"status":"BLOCKED_BY_MODEL_ARMOR","stage":"@mm.stage#","message":"Blocked by Model Armor.","armor":{"mode":"@mm.mode#","verdict":"blocked","matched":"@mm.matched#","parts":@mm.parts_json#,"response":@mm.resp_json#,"latencyMs":@mm.latency_ms#},"requestId":"@messageid#"}}</Payload>
+        <StatusCode>400</StatusCode>
+        <ReasonPhrase>Bad Request</ReasonPhrase>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="response"/>
+</AssignMessage>

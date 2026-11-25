@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Apigee X — Model Armor and Apigee Demo</title>
-  <!-- House favicon: multicolour Apigee mark (same URL as token.YOUR_DOMAIN / SMR). Don't swap for emoji. -->
+  <title>Apigee X — Model Armor &amp; Apigee Demo: Text, Documents, and Multi-modalities</title>
+  <!-- House favicon: multicolour Apigee mark (same URL as SMR). Don't swap for emoji. -->
   <link rel="icon" type="image/svg+xml" href="https://www.gstatic.com/bricks/image/b45728f17bf88494b25d78a9fb27ae538e6eb4a06a972f6502b7410ff714532d.svg">
 
   <!-- Fonts: Plus Jakarta Sans & JetBrains Mono (house style; do not swap) -->
@@ -13,10 +13,14 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
+  <!-- TOUR:BEGIN -->
+  <link rel="stylesheet" href="tour/tour.css">
+  <!-- TOUR:END -->
 
   <!-- app.js is loaded synchronously in <head> so the saved theme applies before first paint;
        it defers all DOM wiring to DOMContentLoaded. -->
   <script src="app.js"></script>
+  <script src="mm.js" defer></script>
 </head>
 <body data-demo="apigee-model-armor-101">
   <div class="app-container">
@@ -38,7 +42,7 @@
         <div class="brand-divider"></div>
         <div class="brand-title-area">
           <div class="brand-title">
-            <span id="brandTitle">Model Armor and Apigee Demo</span>
+            <span id="brandTitle">Model Armor &amp; Apigee Demo: Text, Documents, and Multi-modalities</span>
             <span class="brand-badge">Demo</span>
           </div>
           <span class="brand-subtitle" id="brandSubtitle">Apigee X + Model Armor + Gemini Flash-Lite</span>
@@ -46,12 +50,17 @@
       </div>
 
       <div class="header-actions">
+        <!-- TOUR:BEGIN -->
+        <button type="button" class="header-tour-btn" id="headerTourBtn" aria-label="Guided Tour" title="Open the interactive Guided Tour">
+          <span aria-hidden="true">🗺️</span><span class="header-tour-label">Guided Tour</span>
+        </button>
+        <!-- TOUR:END -->
         <div class="status-badge" id="gatewayBadge" role="status" title="Gateway connection (from /api/config)">
           <span class="status-dot simulated" id="gatewayDot"></span>
           <span id="gatewayText">Connecting…</span>
         </div>
-        <button type="button" class="admin-nav-btn" id="btnOpenAdmin" aria-controls="adminDrawer" title="Open audit log">
-          <span aria-hidden="true">📋</span><span>Audit Log</span>
+        <button type="button" class="admin-nav-btn" id="btnOpenAdmin" aria-controls="adminDrawer" aria-expanded="false" aria-label="Audit Log" title="Open audit log">
+          <span aria-hidden="true">📋</span><span class="admin-nav-label">Audit Log</span>
         </button>
         <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle light / dark mode" title="Toggle light / dark mode">
           <svg id="themeIconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -76,12 +85,13 @@
         <aside class="simulator-left-panel" id="leftPanel" aria-label="Scenarios and input">
           <!-- Collapsible: text scenarios + prompt (POST /api/run) -->
           <section class="section-card collapsible" id="scenarioCard">
-            <h2 class="section-heading">
+            <h2 class="section-heading has-info">
               <button type="button" class="section-toggle" id="textSectionToggle" aria-expanded="true" aria-controls="textSectionBody" data-collapse-key="text">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
                 <span>Screen texts</span>
                 <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
               </button>
+              <button type="button" class="section-info" id="modesInfoBtn" data-modes-info aria-haspopup="dialog" aria-label="How the native policy differs from the REST callout" title="Native policy vs REST callout: what is the difference?">ⓘ</button>
             </h2>
             <div class="section-body" id="textSectionBody">
               <div class="preset-list" id="scenarioList" role="group" aria-label="Scenario presets"></div>
@@ -90,9 +100,9 @@
                 <div class="form-group">
                   <div class="label-row">
                     <label class="form-label" for="promptInput">Prompt</label>
-                    <span class="char-count" id="charCount">0 chars</span>
+                    <span class="char-count" id="charCount">0 / 4,000 chars</span>
                   </div>
-                  <textarea class="prompt-textarea" id="promptInput" maxlength="8000" placeholder="Pick a scenario or type a prompt…"></textarea>
+                  <textarea class="prompt-textarea" id="promptInput" maxlength="4000" placeholder="Pick a scenario or type a prompt…"></textarea>
                   <div class="preset-sub" id="scenarioExpect"></div>
                 </div>
                 <div class="action-btn-group" style="margin-top:12px">
@@ -110,12 +120,13 @@
 
           <!-- Collapsible: document upload, screened by BOTH modes side by side (POST /api/upload) -->
           <section class="section-card collapsible" id="uploadCard">
-            <h2 class="section-heading">
+            <h2 class="section-heading has-info">
               <button type="button" class="section-toggle" id="docSectionToggle" aria-expanded="true" aria-controls="docSectionBody" data-collapse-key="doc">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3-3 3 3"/></svg>
                 <span>Screen a document</span>
                 <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
               </button>
+              <button type="button" class="section-info" data-explain="doc" aria-haspopup="dialog" aria-label="How Screen a document differs from Screen any modality" title="How is this different from Screen any modality?">ⓘ</button>
             </h2>
             <div class="section-body" id="docSectionBody">
               <!-- Sample CVs: View opens the PDF viewer, Use loads the file into the picker (filled by app.js) -->
@@ -133,6 +144,52 @@
             </div>
           </section>
 
+          <!-- Collapsible: multimodal prompt (text + up to 3 images / documents), every part screened (POST /api/multimodal) -->
+          <section class="section-card collapsible" id="mmCard">
+            <h2 class="section-heading has-info">
+              <button type="button" class="section-toggle" id="mmSectionToggle" aria-expanded="false" aria-controls="mmSectionBody" data-collapse-key="mm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                <span>Screen any modality</span>
+                <span class="section-new">New</span>
+                <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <button type="button" class="section-info" data-explain="mm" aria-haspopup="dialog" aria-label="How Screen any modality differs from Screen a document" title="How is this different from Screen a document?">ⓘ</button>
+            </h2>
+            <div class="section-body" id="mmSectionBody" hidden>
+              <div class="preset-list" id="mmScenarioList" role="group" aria-label="Multimodal scenarios"></div>
+              <div class="section-divider">
+                <div class="form-group">
+                  <div class="label-row">
+                    <label class="form-label" for="mmPrompt">Prompt</label>
+                    <span class="char-count" id="mmCharCount">0 / 4,000 chars</span>
+                  </div>
+                  <textarea class="prompt-textarea mm-prompt" id="mmPrompt" maxlength="4000" placeholder="Pick a scenario, or type a question and attach files…"></textarea>
+                </div>
+                <div class="mm-files" id="mmFiles" aria-live="polite"></div>
+                <input type="file" id="mmFileInput" accept=".png,.jpg,.jpeg,.bmp,.pdf,.txt,.csv,.docx,.xlsx,.pptx" multiple hidden>
+                <div class="mm-options">
+                  <button type="button" class="btn btn-secondary btn-xs" id="mmAddFileBtn">📎 Add file</button>
+                  <div class="seg" id="mmFlowGroup" role="radiogroup" aria-label="Answer type">
+                    <button type="button" class="seg-btn active" role="radio" aria-checked="true" data-flow="chat" title="Gemini answers with text">Text answer</button>
+                    <button type="button" class="seg-btn" role="radio" aria-checked="false" data-flow="image" title="Gemini image model generates an image">Image answer</button>
+                  </div>
+                </div>
+                <div class="mm-options">
+                  <span class="form-label" id="mmActionLabel">Response images <span class="mm-hint" id="mmActionHint">Applies to image answers</span></span>
+                  <div class="seg" id="mmActionGroup" role="radiogroup" aria-labelledby="mmActionLabel">
+                    <button type="button" class="seg-btn active" role="radio" aria-checked="true" data-action="redact" title="Black out sensitive data found in the generated image">Redact</button>
+                    <button type="button" class="seg-btn" role="radio" aria-checked="false" data-action="block" title="Block the whole answer if the image matches">Block</button>
+                  </div>
+                </div>
+                <div class="action-btn-group" style="margin-top:10px">
+                  <button type="button" class="btn btn-apigee" id="mmRunBtn" style="flex:1">
+                    <span class="spinner" id="mmRunSpinner" hidden></span><span>🛡️ Screen every part</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section class="demo-arch-card" id="archCard">
             <div class="demo-arch-header">
               <div class="demo-arch-icon" aria-hidden="true">
@@ -143,19 +200,21 @@
                 <span class="demo-arch-badge">Apigee X</span>
               </div>
             </div>
-            <p class="demo-arch-desc">Apigee screens every prompt with Model Armor, either natively or through a REST callout. Only clean prompts reach Gemini 2.5 Flash-Lite. Every decision is logged.</p>
+            <p class="demo-arch-desc">Apigee screens prompts, files, images, and Gemini answers with Model Armor (native policy or REST callout) and logs every decision.</p>
             <button type="button" class="btn btn-primary view-arch-btn" id="viewArchBtn" aria-controls="archModal">🔍 View Architecture Diagram</button>
           </section>
         </aside>
 
         <div class="panel-splitter" id="panelSplitter" role="separator" aria-orientation="vertical"
-             aria-controls="leftPanel" aria-label="Resize panels (←/→, Home resets)" tabindex="0">
+             aria-controls="leftPanel" aria-label="Resize panels (←/→, Home resets)" tabindex="0"
+             aria-valuemin="260" aria-valuemax="650" aria-valuenow="340">
           <div class="splitter-handle"></div>
         </div>
 
         <!-- RIGHT: results. One view at a time, following the open left section (app.js setView):
-             "Screen texts" -> #resultCard, "Screen a document" -> #uploadResultCard.
-             Both show native vs callout side by side (columns built by app.js compareColumn). -->
+             "Screen texts" -> #resultCard, "Screen a document" -> #uploadResultCard (both: native vs callout
+             side by side, columns built by app.js compareColumn), "Screen any modality" -> #mmResultCard
+             (one row per prompt part plus the screened answer, built by mm.js). -->
         <section class="simulator-right-panel" id="rightPanel" aria-label="Results">
           <!-- Document screening result: native vs callout, side by side (filled by app.js) -->
           <div class="card compare-card" id="uploadResultCard" hidden>
@@ -167,12 +226,37 @@
                 </div>
                 <div class="endpoint-path" id="uploadFileLine">POST /api/upload</div>
               </div>
+              <div class="card-header-right">
+                <button type="button" class="btn btn-secondary btn-xs explain-btn" data-explain="doc" aria-haspopup="dialog">ⓘ Document vs any modality</button>
+              </div>
             </div>
             <div class="compare-summary" id="uploadSummary" hidden></div>
             <div class="compare-grid" id="compareGrid" aria-live="polite"></div>
             <details class="raw-details" id="extractDetails" hidden>
               <summary>Text the demo server extracted (what the native policy screened) <span class="raw-count" id="extractCount">0</span></summary>
               <pre class="raw-pre" id="extractText"></pre>
+            </details>
+          </div>
+          <!-- Multimodal result: one row per prompt part, then the screened answer (filled by mm.js) -->
+          <div class="card compare-card" id="mmResultCard" hidden>
+            <div class="card-header">
+              <div>
+                <div class="card-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                  Multimodal screening: every part, both directions
+                </div>
+                <div class="endpoint-path" id="mmEndpoint">POST /api/multimodal</div>
+              </div>
+              <div class="card-header-right">
+                <button type="button" class="btn btn-secondary btn-xs explain-btn" data-explain="mm" aria-haspopup="dialog">ⓘ Document vs any modality</button>
+                <span class="latency-pill" title="End-to-end latency">⏱️ <span id="mmLatency">0 ms</span></span>
+                <span class="status-pill status-idle" id="mmStatusPill" role="status">Idle</span>
+              </div>
+            </div>
+            <div id="mmBody" aria-live="polite"></div>
+            <details class="raw-details" id="mmRawDetails" hidden>
+              <summary>Raw request &amp; response (file bytes and image data shortened)</summary>
+              <pre class="raw-pre" id="mmRaw"></pre>
             </details>
           </div>
           <!-- Text screening result: the same prompt through native vs callout, side by side (filled by app.js) -->
@@ -259,7 +343,7 @@
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-title-group">
-          <h2 class="modal-heading" id="archModalTitle">Model Armor and Apigee Demo — Architecture</h2>
+          <h2 class="modal-heading" id="archModalTitle">Model Armor &amp; Apigee Demo: Text, Documents, and Multi-modalities — Architecture</h2>
           <span class="modal-badge">Apigee X</span>
         </div>
         <button type="button" class="close-btn" id="archModalCloseBtn" aria-label="Close dialog (Esc)">&times;</button>
@@ -267,13 +351,13 @@
       <div class="modal-body">
         <div class="modal-diagram-container">
           <!-- Source of truth: docs/architecture.png, served as assets/architecture.png. Falls back to the placeholder. -->
-          <img src="assets/architecture.png" data-fallback="assets/architecture-placeholder.svg" alt="Model Armor and Apigee Demo architecture diagram" class="modal-diagram-img" id="archImg">
+          <img src="assets/architecture.png" data-fallback="assets/architecture-placeholder.svg" alt="Model Armor &amp; Apigee Demo: Text, Documents, and Multi-modalities architecture diagram" class="modal-diagram-img" id="archImg">
         </div>
         <div class="modal-steps-grid">
-          <div class="modal-step-card"><span class="step-tag">STEP 1</span><h3 class="step-title">Verify the caller</h3><p class="step-desc">Apigee checks the app's API key. The browser never sees it; this app's server adds it.</p></div>
-          <div class="modal-step-card"><span class="step-tag">STEP 2</span><h3 class="step-title">Screen the prompt</h3><p class="step-desc">Model Armor checks the prompt for injection, harmful content, bad URLs and sensitive data. <strong>Native</strong> uses the built-in policy; <strong>Callout</strong> calls the REST API.</p></div>
-          <div class="modal-step-card"><span class="step-tag">STEP 3</span><h3 class="step-title">Forward to Gemini</h3><p class="step-desc">Only clean prompts reach Gemini 2.5 Flash-Lite. A match returns <code>400</code>; if Model Armor can't answer, Apigee returns <code>503</code> and nothing is forwarded.</p></div>
-          <div class="modal-step-card"><span class="step-tag">AUDIT</span><h3 class="step-title">Log the decision</h3><p class="step-desc">Mode, verdict and matched filter names go to Cloud Logging. Prompt text is never logged.</p></div>
+          <div class="modal-step-card"><span class="step-tag">STEP 1</span><h3 class="step-title">Verify the app</h3><p class="step-desc">Apigee checks the caller's API key; the key stays on the server and never reaches the browser.</p></div>
+          <div class="modal-step-card"><span class="step-tag">STEP 2</span><h3 class="step-title">Screen input</h3><p class="step-desc"><strong>Native:</strong> Your app extracts file text first; built-in policy screens text.<br><strong>Callout:</strong> Your app sends raw PDFs, Office files &amp; images; Apigee calls REST per part.</p></div>
+          <div class="modal-step-card"><span class="step-tag">STEP 3</span><h3 class="step-title">Screen answer</h3><p class="step-desc">Only clean inputs reach Gemini. Outbound text and generated images are screened too — blocked (<code>400</code>) or redacted (<code>200</code>).</p></div>
+          <div class="modal-step-card"><span class="step-tag">AUDIT</span><h3 class="step-title">Log the decision</h3><p class="step-desc">Mode, verdict, and matched filter names go to Cloud Logging (<code>503</code> if unscreened). Prompts and files are never logged.</p></div>
         </div>
       </div>
     </div>
@@ -290,6 +374,7 @@
         </div>
         <div class="pdf-modal-actions">
           <button type="button" class="btn btn-apigee" id="pdfUseBtn">Use this file</button>
+          <button type="button" class="btn btn-secondary" id="pdfDownloadBtn" hidden>⬇ Download original</button>
           <a class="btn btn-secondary" id="pdfOpenLink" href="#" target="_blank" rel="noopener noreferrer">Open in new tab ↗</a>
           <button type="button" class="close-btn" id="pdfModalCloseBtn" aria-label="Close PDF viewer (Esc)">&times;</button>
         </div>
@@ -301,7 +386,202 @@
     </div>
   </div>
 
+  <!-- ===================== IMAGE VIEWER MODAL (multimodal attachments + answer image; mm.js) ===================== -->
+  <div class="modal-overlay" id="imgModal" role="dialog" aria-modal="true" aria-labelledby="imgModalTitle">
+    <div class="modal-card img-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2 class="modal-heading" id="imgModalTitle">Image</h2>
+          <span class="modal-badge" id="imgModalBadge">Attachment</span>
+        </div>
+        <div class="pdf-modal-actions">
+          <button type="button" class="btn btn-secondary" id="imgZoomBtn" aria-pressed="false" title="Toggle fit to window / actual size">🔍 100%</button>
+          <button type="button" class="close-btn" id="imgModalCloseBtn" aria-label="Close image viewer (Esc)">&times;</button>
+        </div>
+      </div>
+      <div class="img-modal-body" id="imgModalBody">
+        <img class="img-modal-img" id="imgModalImg" alt="">
+      </div>
+      <p class="img-modal-caption" id="imgModalCaption"></p>
+    </div>
+  </div>
+
+  <!-- ===================== EXPLAINER MODAL: Screen a document vs Screen any modality (mm.js) ===================== -->
+  <div class="modal-overlay" id="explainModal" role="dialog" aria-modal="true" aria-labelledby="explainModalTitle">
+    <div class="modal-card explain-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2 class="modal-heading" id="explainModalTitle">Screen a document vs Screen any modality</h2>
+          <span class="modal-badge">Which one?</span>
+        </div>
+        <button type="button" class="close-btn" id="explainModalCloseBtn" aria-label="Close dialog (Esc)">&times;</button>
+      </div>
+      <div class="modal-body explain-body">
+        <p class="explain-intro">Both views send a file through Apigee to Model Armor before Gemini sees it. They differ in <strong>what you can send</strong> and <strong>how much of it gets screened</strong>.</p>
+        <div class="table-responsive explain-table-wrap">
+          <table class="data-table explain-table">
+            <thead><tr><th>At a glance</th><th>Screen a document</th><th>Screen any modality</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Apigee modes</th><td>Native policy and REST callout, side by side</td><td>REST callout only</td></tr>
+              <tr><th scope="row">Pictures, Word, Excel, PowerPoint</th><td>❌ Not accepted</td><td>✅ Accepted and screened</td></tr>
+              <tr><th scope="row">Pictures inside a document</th><td>❌ Not screened</td><td>✅ Screened (up to 5 per document)</td></tr>
+              <tr><th scope="row">Gemini's answer</th><td>❌ Not screened</td><td>✅ Screened; images blocked or redacted</td></tr>
+              <tr><th scope="row">Proxy and template</th><td><code>apigee-model-armor-101-proxy</code> · text-only template</td><td><code>model-armor-multimodal-proxy</code> · text and image template (<code>us</code>, <code>eu</code> or <code>global</code>)</td></tr>
+              <tr><th scope="row">Step-by-step guide</th><td><code>screen-a-doc.md</code></td><td><code>screen-multi-modality.md</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="explain-grid">
+          <section class="explain-card" data-view="doc" aria-labelledby="explainDocTitle">
+            <div class="explain-card-head">
+              <h3 id="explainDocTitle">📄 Screen a document</h3>
+              <span class="explain-here">You are here</span>
+            </div>
+            <p class="explain-tagline">One document's <strong>text</strong>, both Apigee modes side by side.</p>
+            <!-- Static diagram (no images): one lane per Apigee mode -->
+            <div class="flow" role="img" aria-label="Native lane: the demo server extracts the text, Apigee's native policy sends it to Model Armor (text only), then Gemini. Callout lane: the raw file goes to Apigee, a REST callout sends it to Model Armor, which reads the document text, then Gemini.">
+              <div class="flow-row">
+                <span class="flow-lane">Native</span>
+                <span class="flow-box is-key-native">Your app<span class="flow-sub">extracts text</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-apigee">Apigee<span class="flow-sub">native policy</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-armor">Model Armor<span class="flow-sub">text only</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box">Gemini</span>
+              </div>
+              <div class="flow-row">
+                <span class="flow-lane">Callout</span>
+                <span class="flow-box is-key-callout">Your app<span class="flow-sub">sends raw file</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-apigee">Apigee<span class="flow-sub">REST callout</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-armor">Model Armor<span class="flow-sub">document text</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box">Gemini</span>
+              </div>
+            </div>
+            <dl class="explain-list">
+              <dt>You send</dt>
+              <dd>One PDF, TXT, MD, CSV or JSON file (max 1 MB).</dd>
+              <dt>Screened</dt>
+              <dd>The document's text, hidden text included.</dd>
+              <dt>Not screened</dt>
+              <dd>Pictures inside the document, and Gemini's answer.</dd>
+            </dl>
+            <p class="explain-use"><strong>Use it to show</strong> either Apigee mode protecting a text document.</p>
+            <button type="button" class="btn btn-secondary btn-xs" data-explain-open="doc">Open Screen a document</button>
+          </section>
+          <section class="explain-card" data-view="mm" aria-labelledby="explainMmTitle">
+            <div class="explain-card-head">
+              <h3 id="explainMmTitle">🖼️ Screen any modality</h3>
+              <span class="explain-here">You are here</span>
+            </div>
+            <p class="explain-tagline">Prompt plus up to 3 files: <strong>every part</strong> and the answer screened.</p>
+            <!-- Static diagram (no images): prompt path, then answer path -->
+            <div class="flow" role="img" aria-label="Prompt lane: the prompt and up to 3 files go to Apigee, which makes one REST callout per part to Model Armor, then Gemini. Answer lane: Gemini's answer is screened by Model Armor; a generated image is redacted or blocked.">
+              <div class="flow-row">
+                <span class="flow-lane">Prompt</span>
+                <span class="flow-box is-key-callout">Prompt + files<span class="flow-sub">raw files</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-apigee">Apigee<span class="flow-sub">callout per part</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-armor">Model Armor<span class="flow-sub">× N parts</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box">Gemini</span>
+              </div>
+              <div class="flow-row">
+                <span class="flow-lane">Answer</span>
+                <span class="flow-box is-key-callout">Gemini<span class="flow-sub">raw answer</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-apigee">Apigee<span class="flow-sub">REST callout</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-armor">Model Armor<span class="flow-sub">answer check</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box">User<span class="flow-sub">redacted / blocked</span></span>
+              </div>
+            </div>
+            <dl class="explain-list">
+              <dt>You send</dt>
+              <dd>Prompt and up to 3 images, PDF or Office files.</dd>
+              <dt>Screened</dt>
+              <dd>Text, pictures, up to 5 embedded images per file.</dd>
+              <dt>Answer</dt>
+              <dd>Screened too: generated images redacted or blocked.</dd>
+              <dt>Not to Gemini</dt>
+              <dd>Word, Excel, PowerPoint: screened, Gemini gets a note.</dd>
+            </dl>
+            <p class="explain-use"><strong>Use it to show</strong> pictures, Office files and answer screening.</p>
+            <button type="button" class="btn btn-secondary btn-xs" data-explain-open="mm">Open Screen any modality</button>
+          </section>
+        </div>
+        <div class="explain-try">
+          <strong>Try one file in both.</strong>
+          <a href="samples/multimodal/pdf-embedded-injection.pdf" download>pdf-embedded-injection.pdf</a> hides an injection in a picture:
+          <em>Screen a document</em> allows it, <em>Screen any modality</em> blocks it.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== EXPLAINER MODAL: native policy vs REST callout (Screen texts ⓘ, app.js) ===================== -->
+  <div class="modal-overlay" id="modesModal" role="dialog" aria-modal="true" aria-labelledby="modesModalTitle">
+    <div class="modal-card explain-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2 class="modal-heading" id="modesModalTitle">Native policy vs REST callout</h2>
+          <span class="modal-badge">Two ways to call Model Armor</span>
+        </div>
+        <button type="button" class="close-btn" id="modesModalCloseBtn" aria-label="Close dialog (Esc)">&times;</button>
+      </div>
+      <div class="modal-body explain-body">
+        <p class="explain-intro">Both send the prompt to the <strong>same Model Armor template</strong> and give the <strong>same verdict</strong>. They differ in <strong>how Apigee makes the call</strong> and <strong>how much you control</strong>.</p>
+        <div class="table-responsive explain-table-wrap">
+          <table class="data-table explain-table">
+            <thead><tr><th>At a glance</th><th>Native policy</th><th>REST callout</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">How Apigee calls it</th><td>Built-in <code>SanitizeUserPrompt</code> policy</td><td><code>ServiceCallout</code> to the Model Armor REST API</td></tr>
+              <tr><th scope="row">Setup</th><td>One policy: template + where the prompt is</td><td>Callout + JavaScript to build the request and read the reply</td></tr>
+              <tr><th scope="row">What it can screen</th><td>Text only</td><td>Text, and PDF, TXT or CSV files</td></tr>
+              <tr><th scope="row">Control</th><td>Fixed behaviour, results in flow variables</td><td>Full JSON reply: custom checks and error handling</td></tr>
+              <tr><th scope="row">Latency</th><td>Lowest</td><td>Slightly higher: one extra HTTP call</td></tr>
+              <tr><th scope="row">In this demo</th><td><code>x-armor-mode: native</code></td><td><code>x-armor-mode: callout</code> (same proxy)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="explain-grid">
+          <section class="explain-card" aria-labelledby="modesNativeTitle">
+            <div class="explain-card-head"><h3 id="modesNativeTitle">🧩 Native policy</h3></div>
+            <p class="explain-tagline">Apigee's <strong>built-in policy</strong> calls Model Armor for you.</p>
+            <div class="flow" role="img" aria-label="Native: the app sends the prompt to Apigee, the SanitizeUserPrompt policy screens it with Model Armor, then Gemini answers.">
+              <div class="flow-row">
+                <span class="flow-lane">Native</span>
+                <span class="flow-box">App<span class="flow-sub">prompt</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-key-native">Apigee<span class="flow-sub">built-in policy</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-armor">Model Armor<span class="flow-sub">template</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box">Gemini</span>
+              </div>
+            </div>
+            <dl class="explain-list">
+              <dt>Best for</dt><dd>Text prompts with the least setup.</dd>
+              <dt>Limit</dt><dd>Text only; files must be turned into text first.</dd>
+            </dl>
+          </section>
+          <section class="explain-card" aria-labelledby="modesCalloutTitle">
+            <div class="explain-card-head"><h3 id="modesCalloutTitle">🔌 REST callout</h3></div>
+            <p class="explain-tagline">Apigee <strong>calls the Model Armor API</strong> itself and reads the reply.</p>
+            <div class="flow" role="img" aria-label="Callout: the app sends the prompt to Apigee, a ServiceCallout sends it to the Model Armor REST API, JavaScript reads the reply, then Gemini answers.">
+              <div class="flow-row">
+                <span class="flow-lane">Callout</span>
+                <span class="flow-box">App<span class="flow-sub">prompt or file</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-key-callout">Apigee<span class="flow-sub">callout + JS</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box is-armor">Model Armor<span class="flow-sub">REST API</span></span><span class="flow-arrow">→</span>
+                <span class="flow-box">Gemini</span>
+              </div>
+            </div>
+            <dl class="explain-list">
+              <dt>Best for</dt><dd>Files, custom logic, or API fields the policy hides.</dd>
+              <dt>Cost</dt><dd>More policies to maintain, a little more latency.</dd>
+            </dl>
+          </section>
+        </div>
+        <div class="explain-try"><strong>Try it.</strong> Run any scenario in <em>Screen texts</em>: both columns show the same verdict. Compare the check times.</div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
+  <!-- TOUR:BEGIN -->
+  <script type="module" src="tour/tour-engine.js"></script>
+  <!-- TOUR:END -->
 </body>
 </html>

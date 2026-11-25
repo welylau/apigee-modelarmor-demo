@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Javascript continueOnError="false" enabled="true" timeLimit="5000" name="JS-Split-Parts">
+    <DisplayName>Split Prompt into Parts (text, images, documents)</DisplayName>
+    <Properties>
+        <Property name="maxFiles">3</Property>
+        <Property name="maxTextChars">8000</Property>
+        <!-- Model Armor limit: 4 MB per image or document (base64 = 4/3 of the bytes). -->
+        <Property name="maxPartBase64Chars">5592408</Property>
+        <Property name="maxTotalBase64Chars">7000000</Property>
+        <!-- Response images: block (any match blocks) or redact (SDP findings are blacked out).
+             Per request: header x-armor-image-action: block | redact. -->
+        <Property name="responseImageAction">redact</Property>
+    </Properties>
+    <ResourceURL>jsc://split-parts.js</ResourceURL>
+</Javascript>

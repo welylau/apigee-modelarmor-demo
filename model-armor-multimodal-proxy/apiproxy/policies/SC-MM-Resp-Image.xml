@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ServiceCallout continueOnError="false" enabled="true" name="SC-MM-Resp-Image">
+    <DisplayName>Model Armor: sanitizeModelResponse, image</DisplayName>
+    <!-- The generated image. mm.resp_image_template = the redact template (returns redactedImage) or the inspect template (block only).
+         Non-2xx or timeout -> FaultRule "mm-unavailable" (503, fail closed). -->
+    <Request variable="mmArmorRespImageReq" clearPayload="true">
+        <Set>
+            <Headers>
+                <Header name="Content-Type">application/json</Header>
+            </Headers>
+            <Payload contentType="application/json">{private.mm.resp_image_body}</Payload>
+            <Verb>POST</Verb>
+        </Set>
+        <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+    </Request>
+    <Response>mmArmorRespImage</Response>
+    <!-- Images and documents usually take 1.5-4 s each (Model Armor runs OCR / parses the file), with spikes
+         past 20 s seen live. Worst case per request: 4 x 25 s (prompt parts) + 120 s (Gemini) + 20 s (answer text)
+         + 30 s (answer image, redaction is slower) = 270 s, under the 300 s Cloud Run timeout. -->
+    <Timeout>30000</Timeout>
+    <HTTPTargetConnection>
+        <!-- Token of the proxy's deployment service account (needs roles/modelarmor.user). -->
+        <Authentication>
+            <GoogleAccessToken>
+                <Scopes>
+                    <Scope>https://www.googleapis.com/auth/cloud-platform</Scope>
+                </Scopes>
+            </GoogleAccessToken>
+        </Authentication>
+        <!-- Multi-region endpoint: image screening needs us / eu / global (not us-central1). -->
+        <URL>https://modelarmor.{propertyset.demo.armor_location}.rep.googleapis.com/v1/projects/{propertyset.demo.armor_project}/locations/{propertyset.demo.armor_location}/templates/{mm.resp_image_template}:sanitizeModelResponse</URL>
+    </HTTPTargetConnection>
+</ServiceCallout>

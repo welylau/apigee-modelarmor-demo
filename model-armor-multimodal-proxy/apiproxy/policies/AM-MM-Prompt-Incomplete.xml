@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="true" enabled="true" name="AM-MM-Prompt-Incomplete">
+    <DisplayName>Mark Prompt Verdict Incomplete</DisplayName>
+    <AssignVariable>
+        <Name>mm.verdict</Name>
+        <Value>incomplete</Value>
+    </AssignVariable>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</AssignMessage>

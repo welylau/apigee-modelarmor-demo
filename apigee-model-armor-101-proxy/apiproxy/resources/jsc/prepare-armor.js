@@ -11,10 +11,15 @@
  * - private.armor.prompt        the text prompt (private.* is masked in Debug)
  * - private.armor.callout_body  JSON body for the REST sanitizeUserPrompt call
  *                               (userPromptData.text, or userPromptData.byteItem for files)
- * File mode also rewrites request.content to a fresh Gemini body: the proxy-owned instruction
- * (property fileInstruction) + the same inlineData bytes Model Armor screened. Nothing else from
- * the client body (systemInstruction, tools, ...) is forwarded in file mode.
+ * On success request.content is ALWAYS rewritten to a fresh Gemini body, so Gemini only receives
+ * what Model Armor screened:
+ *   text : {contents:[{role:'user',parts:[{text:<prompt>}]}]}
+ *   file : the proxy-owned instruction (property fileInstruction) + the same inlineData bytes.
+ * Nothing else from the client body (systemInstruction, tools, toolConfig, generationConfig,
+ * safetySettings, cachedContent, ...) is forwarded in either mode.
+ * On rejection the body is left untouched (RF-Bad-Request stops the flow anyway).
  */
+// Default is native here (multimodal proxy defaults to callout): this proxy teaches the built-in text policies first.
 var mode = String(context.getVariable('request.header.x-armor-mode') || 'native').toLowerCase().trim();
 if (mode !== 'callout') { mode = 'native'; }
 context.setVariable('armor.mode', mode);
@@ -82,4 +87,9 @@ if (!ok) {
 } else {
   context.setVariable('private.armor.prompt', prompt);
   context.setVariable('private.armor.callout_body', JSON.stringify({ userPromptData: { text: prompt } }));
+  // Forward only the screened prompt: unscreened fields such as systemInstruction or tools
+  // must never reach Gemini.
+  context.setVariable('request.content', JSON.stringify({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }]
+  }));
 }

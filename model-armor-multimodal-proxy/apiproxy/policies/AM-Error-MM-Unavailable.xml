@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="true" enabled="true" name="AM-Error-MM-Unavailable">
+    <DisplayName>503 Model Armor Could Not Finish (fail closed)</DisplayName>
+    <Set>
+        <Headers>
+            <Header name="Content-Type">application/json</Header>
+            <Header name="X-Request-Id">{messageid}</Header>
+            <Header name="X-Armor-Mode">{mm.mode}</Header>
+            <Header name="X-Armor-Stage">{mm.stage}</Header>
+            <Header name="X-Armor-Prompt-Verdict">{mm.verdict}</Header>
+            <Header name="X-Armor-Response-Verdict">{mm.resp_verdict}</Header>
+            <Header name="X-Armor-Latency-Ms">{mm.latency_ms}</Header>
+            <Header name="X-Armor-Verdict">incomplete</Header>
+        </Headers>
+        <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{"error":{"code":503,"status":"ARMOR_UNAVAILABLE","stage":"@mm.stage#","message":"Model Armor could not fully screen the input (for example a file over its size or embedded-image limits), so nothing was forwarded (fail closed).","armor":{"mode":"@mm.mode#","verdict":"incomplete","parts":@mm.parts_json#,"response":@mm.resp_json#},"requestId":"@messageid#"}}</Payload>
+        <StatusCode>503</StatusCode>
+        <ReasonPhrase>Service Unavailable</ReasonPhrase>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="response"/>
+</AssignMessage>

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Deploys the Model Armor 101 web UI to Cloud Run behind IAP, with a custom domain.
+# Deploys the Model Armor and Apigee Demo web UI to Cloud Run behind IAP, with a custom domain.
 # Idempotent: safe to re-run after code changes. Based on the SDP demo script.
 #
 #   ./deploy-cloudrun.sh                               # house defaults
@@ -20,11 +20,10 @@ REGION="${REGION:-asia-southeast1}"
 APIGEE_HOST="${APIGEE_HOST:-YOUR_APIGEE_HOST}"
 SERVICE="${SERVICE:-apigee-model-armor-101-ui}"
 DOMAIN="${DOMAIN:-model-armor.YOUR_DOMAIN}"     # DOMAIN=none to skip mapping + DNS
-DNS_ZONE="${DNS_ZONE:-apigee-demo-com}"
+DNS_ZONE="${DNS_ZONE:-YOUR_DNS_ZONE}"
 IAP_MEMBERS="${IAP_MEMBERS:-domain:google.com}"       # comma list: user:a@x.com,group:g@x.com
 MODEL="${MODEL:-gemini-2.5-flash-lite}"
 # Model Armor template linked from the UI (non-secret; from .env if present)
-if [ -f "$(dirname "$0")/.env" ]; then eval "$(grep -E '^(ARMOR_(PROJECT|LOCATION|TEMPLATE)|CONSOLE_HOST)=[A-Za-z0-9_.-]+$' "$(dirname "$0")/.env")"; fi
 ARMOR_PROJECT="${ARMOR_PROJECT:-$PROJECT_ID}"; ARMOR_LOCATION="${ARMOR_LOCATION:-}"; ARMOR_TEMPLATE="${ARMOR_TEMPLATE:-apigee-model-armor-101}"
 API_KEY_SECRET="${API_KEY_SECRET:-${SERVICE}-api-key}"
 API_KEY="${API_KEY:-}"
@@ -51,7 +50,7 @@ g services enable run.googleapis.com iap.googleapis.com secretmanager.googleapis
 
 echo "▶ Runtime service account: $SA"
 g iam service-accounts describe "$SA" >/dev/null 2>&1 || \
-  g iam service-accounts create "$SA_NAME" --display-name="Model Armor 101 UI (Cloud Run)"
+  g iam service-accounts create "$SA_NAME" --display-name="Model Armor and Apigee Demo UI (Cloud Run)"
 # Admin log panel reads the proxy's Cloud Logging entries.
 g projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$SA" \
   --role=roles/logging.viewer --condition=None >/dev/null
@@ -70,19 +69,20 @@ unset CURRENT
 g secrets add-iam-policy-binding "$API_KEY_SECRET" --member="serviceAccount:$SA" \
   --role=roles/secretmanager.secretAccessor >/dev/null
 
-echo "▶ Build context (only server.py, pdf_text.py, static/, Dockerfile: .env never leaves the machine)"
+echo "▶ Build context (only server.py, pdf_text.py, multimodal.py, static/, Dockerfile: .env never leaves the machine)"
 BUILD="$(mktemp -d)"
 trap 'rm -rf "$BUILD"' EXIT
-cp "$DIR/Dockerfile" "$DIR/server.py" "$DIR/pdf_text.py" "$DIR/.dockerignore" "$BUILD/"
+cp "$DIR/Dockerfile" "$DIR/server.py" "$DIR/pdf_text.py" "$DIR/multimodal.py" "$DIR/.dockerignore" "$BUILD/"
 cp -R "$DIR/static" "$BUILD/static"
 
 echo "▶ Cloud Run deploy (source build) with IAP"
 # max-instances=1: the demo audit store (audit_logs.json) lives in the instance.
+# timeout=300: "Screen any modality" with an image answer usually takes 9-12 s but has taken up to ~100 s.
 g run deploy "$SERVICE" --source="$BUILD" --region="$REGION" \
   --service-account="$SA" --no-allow-unauthenticated --iap \
   --set-secrets="API_KEY=${API_KEY_SECRET}:latest" \
   --set-env-vars="PROJECT_ID=${PROJECT_ID},APIGEE_HOST=${APIGEE_HOST},MODEL=${MODEL},APIGEE_INSECURE=${INSECURE},ARMOR_PROJECT=${ARMOR_PROJECT},ARMOR_LOCATION=${ARMOR_LOCATION},ARMOR_TEMPLATE=${ARMOR_TEMPLATE},CONSOLE_HOST=${CONSOLE_HOST:-console.cloud.google.com}" \
-  --min-instances=0 --max-instances=1 --cpu=1 --memory=512Mi --timeout=120 \
+  --min-instances=0 --max-instances=1 --cpu=1 --memory=512Mi --timeout=300 \
   --labels=app=apigee-model-armor-101,managed-by=deploy-cloudrun
 
 echo "▶ IAP: service agent may invoke the service; IAP_MEMBERS may pass IAP"
@@ -114,4 +114,4 @@ fi
 
 URL=$(g run services describe "$SERVICE" --region="$REGION" --format='value(status.url)')
 echo "✅ $SERVICE deployed: $URL${DOMAIN:+  |  https://$DOMAIN (certificate can take 15-60 min)}"
-echo "   Verify: curl -s -o /dev/null -w '%{http_code}\n' $URL/healthz   # expect 302/401/403 (IAP), never 200"
+echo "   Verify: curl -s -o /dev/null -w '%{http_code}\n' $URL/api/config   # expect 302/401/403 (IAP), never 200 (not /healthz: Google's front end answers that path itself)"

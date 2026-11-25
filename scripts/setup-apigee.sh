@@ -101,7 +101,7 @@ if [ "$DO_DEPLOY" = 1 ]; then
 fi
 
 # ---------- 2. API product ----------
-# On update, other proxies already on the product (e.g. model-armor-via-servicecallout-proxy,
+# On update, other proxies already on the product (e.g. model-armor-multimodal-proxy,
 # added by its own deploy.sh) are kept.
 code=$(api GET "/apiproducts/${PRODUCT}")
 [ "$code" = 200 ] || [ "$code" = 404 ] || fail "get product" "$code"
@@ -160,8 +160,11 @@ fi
 ENV_FILE="$ROOT/web-ui/.env"
 if [ -d "$ROOT/web-ui" ]; then
   touch "$ENV_FILE"; chmod 600 "$ENV_FILE"
-  { grep -vE '^(API_KEY|ARMOR_PROJECT|ARMOR_LOCATION|ARMOR_TEMPLATE)=' "$ENV_FILE" || true; echo "API_KEY=$KEY"
-    [ -n "$ARMOR_LOCATION" ] && printf 'ARMOR_PROJECT=%s\nARMOR_LOCATION=%s\nARMOR_TEMPLATE=%s\n' "$ARMOR_PROJECT" "$ARMOR_LOCATION" "$ARMOR_TEMPLATE"; } > "$ENV_FILE.tmp"
+  # Always refresh API_KEY. ARMOR_* are only replaced when ARMOR_LOCATION is known (deploy runs);
+  # a --no-deploy run without it keeps the existing ARMOR_* lines instead of dropping them.
+  if [ -n "$ARMOR_LOCATION" ]; then STRIP='^(API_KEY|ARMOR_PROJECT|ARMOR_LOCATION|ARMOR_TEMPLATE)='; else STRIP='^API_KEY='; fi
+  { grep -vE "$STRIP" "$ENV_FILE" || true; echo "API_KEY=$KEY"
+    if [ -n "$ARMOR_LOCATION" ]; then printf 'ARMOR_PROJECT=%s\nARMOR_LOCATION=%s\nARMOR_TEMPLATE=%s\n' "$ARMOR_PROJECT" "$ARMOR_LOCATION" "$ARMOR_TEMPLATE"; fi; } > "$ENV_FILE.tmp"
   mv "$ENV_FILE.tmp" "$ENV_FILE"; chmod 600 "$ENV_FILE"
   if [ -f "$ROOT/.gitignore" ] && ! grep -qE '^(\*\*/)?\.env$' "$ROOT/.gitignore"; then
     echo "⚠️  .env is not in $ROOT/.gitignore: add it before committing" >&2

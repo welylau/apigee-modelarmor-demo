@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<MessageLogging continueOnError="true" enabled="true" name="ML-Log-Audit">
+    <DisplayName>Log Audit Event to Cloud Logging</DisplayName>
+    <!-- Same log as the 101 proxy, so the web UI audit drawer shows both. Names and verdicts only. -->
+    <CloudLogging>
+        <LogName>projects/{organization.name}/logs/apigee-model-armor-101-logs</LogName>
+        <Message contentType="application/json">{"proxy":"{apiproxy.name}","app":"{escapeJSON(developer.app.name)}","scenarioId":"{escapeJSON(request.header.x-demo-scenario)}","httpStatus":"{response.status.code}","fault":"{escapeJSON(fault.name)}","armorMode":"mm-{mm.mode}","armorStage":"{mm.stage}","armorParts":"{mm.part_count}","armorVerdict":"{mm.verdict}","armorResponseVerdict":"{mm.resp_verdict}","armorImageAction":"{mm.image_action}","armorFilters":"{escapeJSON(mm.matched)}","armorResponseFilters":"{escapeJSON(mm.resp_matched)}","armorLatencyMs":"{mm.latency_ms}","requestId":"{messageid}"}</Message>
+        <Labels>
+            <Label>
+                <Key>proxy</Key>
+                <Value>{apiproxy.name}</Value>
+            </Label>
+            <Label>
+                <Key>environment</Key>
+                <Value>{environment.name}</Value>
+            </Label>
+        </Labels>
+        <ResourceType>api</ResourceType>
+    </CloudLogging>
+</MessageLogging>

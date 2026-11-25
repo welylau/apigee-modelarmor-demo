@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Javascript continueOnError="false" enabled="true" timeLimit="200" name="JS-Evaluate-Armor">
+<Javascript continueOnError="false" enabled="true" timeLimit="1000" name="JS-Evaluate-Armor">
     <DisplayName>Normalise Model Armor Verdict</DisplayName>
     <Properties>
         <!-- Filters enabled on the template; each must report EXECUTION_SUCCESS or the prompt is not forwarded. -->

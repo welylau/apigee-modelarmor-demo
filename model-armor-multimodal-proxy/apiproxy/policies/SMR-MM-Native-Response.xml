@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<SanitizeModelResponse continueOnError="false" enabled="true" name="SMR-MM-Native-Response">
+    <DisplayName>Model Armor: Sanitize Model Response (native, text only)</DisplayName>
+    <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+    <ModelArmor>
+        <TemplateName>projects/{propertyset.demo.armor_project}/locations/{propertyset.demo.armor_location}/templates/{propertyset.demo.armor_template_inspect}</TemplateName>
+    </ModelArmor>
+    <UserPromptSource>{private.mm.native_text}</UserPromptSource>
+    <LLMResponseSource>{private.mm.resp_text}</LLMResponseSource>
+</SanitizeModelResponse>

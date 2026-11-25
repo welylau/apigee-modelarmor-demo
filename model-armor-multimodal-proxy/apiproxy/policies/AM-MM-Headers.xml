@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="true" enabled="true" name="AM-MM-Headers">
+    <DisplayName>Add Multimodal Armor Telemetry Headers</DisplayName>
+    <!-- Names, verdicts and timings only: never prompt text, file bytes or OCR text.
+         X-Armor-Verdict is the RESPONSE verdict (kept for the web UI BFF); X-Armor-Filters / X-Armor-Latency-Ms
+         describe the PROMPT. X-Armor-Prompt-Verdict / X-Armor-Response-Verdict name each stage explicitly. -->
+    <Set>
+        <Headers>
+            <Header name="X-Request-Id">{messageid}</Header>
+            <Header name="X-Armor-Mode">{mm.mode}</Header>
+            <Header name="X-Armor-Verdict">{mm.resp_verdict}</Header>
+            <Header name="X-Armor-Prompt-Verdict">{mm.verdict}</Header>
+            <Header name="X-Armor-Response-Verdict">{mm.resp_verdict}</Header>
+            <Header name="X-Armor-Filters">{mm.matched}</Header>
+            <Header name="X-Armor-Latency-Ms">{mm.latency_ms}</Header>
+            <Header name="X-Armor-Response-Latency-Ms">{mm.resp_latency_ms}</Header>
+            <Header name="X-Armor-Parts">{mm.parts_json}</Header>
+            <Header name="X-Armor-Response">{mm.resp_json}</Header>
+        </Headers>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="response"/>
+</AssignMessage>

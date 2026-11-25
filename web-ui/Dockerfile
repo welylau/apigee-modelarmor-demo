@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
@@ -6,6 +6,7 @@ WORKDIR /app
 # .dockerignore (.env, audit_logs.json).
 COPY server.py /app/server.py
 COPY pdf_text.py /app/pdf_text.py
+COPY multimodal.py /app/multimodal.py
 COPY static /app/static
 
 RUN useradd --create-home --uid 10001 appuser && chown -R appuser /app

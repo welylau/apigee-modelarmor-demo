@@ -62,10 +62,12 @@
                 </Step>
             </Request>
             <Response>
-                <!-- Disabled in this prompt-only demo (enabled="false" in the policy). -->
+                <!-- Disabled in this prompt-only demo (enabled="false" in the policy).
+                     If enabled: text prompts only. File mode (armor.input = "file:*") never sets
+                     private.armor.prompt, which the policy reads with IgnoreUnresolvedVariables=false. -->
                 <Step>
                     <Name>SMR-Sanitize-Response</Name>
-                    <Condition>response.status.code = 200</Condition>
+                    <Condition>(response.status.code = 200) and (armor.input = "text")</Condition>
                 </Step>
                 <Step>
                     <Name>AM-Armor-Headers</Name>
@@ -128,7 +130,17 @@
         </FaultRule>
     </FaultRules>
     <DefaultFaultRule name="default-fault-handler">
-        <!-- RaiseFault policies already set their own JSON body/status. -->
+        <!-- Runs only when no FaultRule above matched (AlwaysEnforce=false), e.g. a Vertex AI 4xx/5xx
+             (ErrorResponseCode) or a target timeout after the prompt was already screened.
+             RaiseFault policies already set their own JSON body/status, so both steps skip them.
+             AM-Armor-Headers first: the prompt verdict / filters / latency stay visible on upstream errors.
+             It only runs once JS-Evaluate-Armor has produced a verdict, and it is continueOnError with
+             IgnoreUnresolvedVariables, so it can never fault here. AM-Error-Default then only Sets
+             Content-Type / X-Request-Id and the body (createNew=false), so the X-Armor-* headers survive. -->
+        <Step>
+            <Condition>(fault.name != "RaiseFault") and (armor.verdict != null)</Condition>
+            <Name>AM-Armor-Headers</Name>
+        </Step>
         <Step>
             <Condition>fault.name != "RaiseFault"</Condition>
             <Name>AM-Error-Default</Name>
